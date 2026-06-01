@@ -19,7 +19,17 @@ void GraphList::addEdge(int u, int v) {
         throw std::out_of_range("Vértice no creado");
     }
 
+    // busco duplicados antes de insertar
+    //necesario, porque en el dataset de proteinas, que es no dirigido, hay aristas que podrian quedar repetidas, error que con matriz de adyacencia no ocurre
+    for (int vecino : adjList[u]) {
+        if (vecino == v) {
+            return; // si ya son vecinos, salimos inmediatamente y no insertamos nada
+        }
+    }
+
+    //si el bucle termina y no se activo el return, significa que la arista es nueva
     adjList[u].push_back(v);
+    
     if (!isDirected && u != v) {
         adjList[v].push_back(u);
     }
