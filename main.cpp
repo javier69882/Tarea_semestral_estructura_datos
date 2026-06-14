@@ -33,6 +33,34 @@ static std::size_t getCurrentProcessMemoryBytes() {
 }
 #endif
 
+// benchmark de la metrica 4. PageRank, con medicion de tiempo
+static void printPageRankBenchmark(const Graph& graph, const MapeoGrafo& traductor, const std::string& datasetLabel, const std::string& topLabel) {
+    const auto start = std::chrono::steady_clock::now();
+
+    const auto resultadoPR = Centrality::calculatePageRank(graph);
+
+    const auto end = std::chrono::steady_clock::now();
+    const auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    const std::vector<std::pair<int, double>>& topNodos = resultadoPR.first;
+    const double tiempoMs = resultadoPR.second;
+
+    std::cout << "\n--- PageRank: " << datasetLabel << " ---\n";
+    std::cout << "PageRank calculado en " << tiempoMs << " ms.\n";
+    std::cout << "Tiempo total del benchmark: " << elapsedMs << " ms\n";
+    std::cout << "--- TOP 5 " << topLabel << " ---\n";
+
+    std::cout << std::fixed << std::setprecision(6);
+    for (int i = 0; i < 5 && i < static_cast<int>(topNodos.size()); i++) {
+        const int idNodo = topNodos[i].first;
+        const double puntaje = topNodos[i].second;
+
+        std::cout << i + 1 << ". " << traductor.id_a_nombre[idNodo]
+                  << " (Puntaje: " << puntaje << ")\n";
+    }
+    std::cout.unsetf(std::ios::floatfield);
+}
+
 // benchmark de la metrica 5. Average Shortest Path, con medicion de tiempo
 static void printAverageShortestPathBenchmark(const Graph& graph, const std::string& datasetLabel) {
     const auto start = std::chrono::steady_clock::now();
@@ -79,23 +107,8 @@ int main(int argc, char* argv[]) {
             // benchmark de metrica 5. Average Shortest Path
             printAverageShortestPathBenchmark(grafoProteinas, "proteinas / yeast.edgelist");
         }
-         // ==========================================
-        // ANÁLISIS DE CENTRALIDAD: PAGERANK
-        // ==========================================
-        auto resultadoPR_Prot = Centrality::calculatePageRank(grafoProteinas); 
-
-        std::vector<std::pair<int, double>> topProteinas = resultadoPR_Prot.first;
-        double tiempoMs_Prot = resultadoPR_Prot.second;
-
-        std::cout << "\nPageRank calculado en " << tiempoMs_Prot << " ms.\n";
-        std::cout << "--- TOP 5 PROTEINAS MAS CRITICAS (Nodos Hub) ---\n";
-
-        for (int i = 0; i < 5 && i < topProteinas.size(); i++) {
-            int idNodo = topProteinas[i].first;
-            double puntaje = topProteinas[i].second;
-            
-            std::cout << i + 1 << ". " << traductor.id_a_nombre[idNodo] 
-                      << " (Puntaje: " << puntaje << ")\n";
+        if (grafoProteinas.getNumVertices() > 0) {
+            printPageRankBenchmark(grafoProteinas, traductor, "proteinas / yeast.edgelist", "TOP 5 PROTEINAS MAS CRITICAS (Nodos Hub)");
         }
     } 
     // oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
@@ -123,25 +136,12 @@ int main(int argc, char* argv[]) {
                 printAverageShortestPathBenchmark(redesComerciales[i], archivosTrade[i]);
             }
         }
-         auto resultadoPR = Centrality::calculatePageRank(redesComerciales[4]); // Año 2018
-
-std::vector<std::pair<int, double>> topPaises = resultadoPR.first;
-double tiempoMs = resultadoPR.second;
-
-std::cout << "PageRank calculado en " << tiempoMs << " ms.\n";
-std::cout << "--- TOP 5 POTENCIAS COMERCIALES (2018) ---\n";
-
-for (int i = 0; i < 5 && i < topPaises.size(); i++) {
-    int idNodo = topPaises[i].first;
-    double puntaje = topPaises[i].second;
-    
-    std::cout << i + 1 << ". " << traductor.id_a_nombre[idNodo] 
-              << " (Puntaje: " << puntaje << ")\n";
-}
+        if (redesComerciales[4].getNumVertices() > 0) {
+            printPageRankBenchmark(redesComerciales[4], traductor, "trade / 2018.net", "TOP 5 POTENCIAS COMERCIALES (2018)");
+        }
     } 
-    // oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
-    // ESCENARIO 3: MODO DESCONOCIDO
-    //ooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+    
+    // escenario no reconocido
     else {
         std::cerr << "Error: Modo '" << modo << "' no reconocido.\n";
         std::cerr << "Opciones validas: proteinas, trade\n";
