@@ -18,7 +18,7 @@ public:
 
     // 3. Closeness Centrality
     // Fuente: Basado en el algoritmo de caminos más cortos de Dijkstra/BFS referenciado en NetworkX Developers (2026).
-    static std::unordered_map<int, double> calculateClosenessCentrality(const Graph& g);
+     static std::pair<std::vector<std::pair<int, double>>, double> calculateClosenessCentrality(const Graph& g);
 
     // 4. PageRank
     // Fuente: Algoritmo iterativo clásico (Page et al., 1999). Lógica de convergencia adaptada de NetworkX.

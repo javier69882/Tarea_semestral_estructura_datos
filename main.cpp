@@ -32,6 +32,33 @@ static std::size_t getCurrentProcessMemoryBytes() {
     return 0;
 }
 #endif
+// benchmark de la metrica 3. Closeness Centrality, con medicion de tiempo
+static void printClosenessCentralityBenchmark(const Graph& graph, const MapeoGrafo& traductor, const std::string& datasetLabel, const std::string& topLabel) {
+    const auto start = std::chrono::steady_clock::now();
+
+    const auto resultadoCloseness = Centrality::calculateClosenessCentrality(graph);
+
+    const auto end = std::chrono::steady_clock::now();
+    const auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    const std::vector<std::pair<int, double>>& topNodos = resultadoCloseness.first;
+    const double tiempoMs = resultadoCloseness.second;
+
+    std::cout << "\n--- Closeness Centrality: " << datasetLabel << " ---\n";
+    std::cout << "Closeness calculado en " << tiempoMs << " ms.\n";
+    std::cout << "Tiempo total del benchmark: " << elapsedMs << " ms\n";
+    std::cout << "--- TOP 5 " << topLabel << " ---\n";
+
+    std::cout << std::fixed << std::setprecision(6);
+    for (int i = 0; i < 5 && i < static_cast<int>(topNodos.size()); i++) {
+        const int idNodo = topNodos[i].first;
+        const double puntaje = topNodos[i].second;
+
+        std::cout << i + 1 << ". " << traductor.id_a_nombre[idNodo]
+                  << " (Puntaje: " << puntaje << ")\n";
+    }
+    std::cout.unsetf(std::ios::floatfield);
+}
 
 // benchmark de la metrica 4. PageRank, con medicion de tiempo
 static void printPageRankBenchmark(const Graph& graph, const MapeoGrafo& traductor, const std::string& datasetLabel, const std::string& topLabel) {
@@ -110,6 +137,10 @@ int main(int argc, char* argv[]) {
         if (grafoProteinas.getNumVertices() > 0) {
             printPageRankBenchmark(grafoProteinas, traductor, "proteinas / yeast.edgelist", "TOP 5 PROTEINAS MAS CRITICAS (Nodos Hub)");
         }
+        // benchmark de metrica 3. Closeness Centrality
+         if (grafoProteinas.getNumVertices() > 0) {
+            printClosenessCentralityBenchmark(grafoProteinas, traductor, "proteinas / yeast.edgelist", "PROTEINAS CON MAYOR CERCANIA (Acceso rapido)");
+         }
     } 
     // oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
     // ESCENARIO 2: RED DE COMERCIO (TRADE)
@@ -138,6 +169,10 @@ int main(int argc, char* argv[]) {
         }
         if (redesComerciales[4].getNumVertices() > 0) {
             printPageRankBenchmark(redesComerciales[4], traductor, "trade / 2018.net", "TOP 5 POTENCIAS COMERCIALES (2018)");
+        }
+        // benchmark de metrica 3. Closeness Centrality
+        if (redesComerciales[4].getNumVertices() > 0) {
+            printClosenessCentralityBenchmark(redesComerciales[4], traductor, "trade / 2018.net", "POTENCIAS COMERCIALES CON MAYOR CERCANIA (Acceso rapido)");
         }
     } 
     

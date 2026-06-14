@@ -13,6 +13,200 @@
 #include <algorithm> 
 
 
+// 3. Closeness Centrality
+std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClosenessCentrality(const Graph& g) {
+    auto start = std::chrono::high_resolution_clock::now();
+
+    const int vertexCount = g.getNumVertices();
+    std::vector<std::pair<int, double>> rankingFinal;
+
+    // Si el grafo esta vacio o tiene 1 nodo, devolvemos vacio
+    if (vertexCount <= 1) {
+        return std::make_pair(rankingFinal, 0.0);
+    }
+
+    std::unordered_map<int, double> closenessScores;
+
+    const GraphList* listGraph = dynamic_cast<const GraphList*>(&g);
+    const bool hasAdjacencyListFastPath = (listGraph != nullptr);
+
+    bool isUnweightedGraph = true; 
+    const double unitWeight = 1.0;
+    const double epsilon = 1e-9;
+    
+    // Verificacion de grafo ponderado o no igual que en avg first path, para elegir BFS o Dijkstra respectivamente
+    if (hasAdjacencyListFastPath) {
+        for (int u = 0; u < vertexCount && isUnweightedGraph; ++u) {
+            for (const auto& edge : listGraph->getAdjacencyListRef(u)) {
+                if (edge.second <= 0.0 || std::fabs(edge.second - unitWeight) > epsilon) {
+                    isUnweightedGraph = false;
+                    break;
+                }
+            }
+        }
+    } else {
+        for (int u = 0; u < vertexCount && isUnweightedGraph; ++u) {
+            for (int v : g.getNeighbors(u)) {
+                const double edgeWeight = g.getWeight(u, v);
+                if (edgeWeight <= 0.0 || std::fabs(edgeWeight - unitWeight) > epsilon) {
+                    isUnweightedGraph = false;
+                    break;
+                }
+            }
+        }
+    }
+
+    const double infinity = std::numeric_limits<double>::infinity();
+
+   
+    // CASO 1: BFS para Grafos No Ponderados
+   
+    if (isUnweightedGraph) {
+        if (hasAdjacencyListFastPath) {
+            std::vector<int> distances(vertexCount, 0);
+            std::vector<int> visited(vertexCount, 0);
+            int traversalTag = 1;
+
+            for (int source = 0; source < vertexCount; ++source) {
+                if (traversalTag == std::numeric_limits<int>::max()) {
+                    std::fill(visited.begin(), visited.end(), 0);
+                    traversalTag = 1;
+                }
+
+                visited[source] = traversalTag;
+                distances[source] = 0;
+                std::queue<int> frontier;
+                frontier.push(source);
+
+                double sumDistances = 0.0; // Acumulador local para el nodo source
+
+                while (!frontier.empty()) {
+                    const int currentVertex = frontier.front();
+                    frontier.pop();
+
+                    for (const auto& edge : listGraph->getAdjacencyListRef(currentVertex)) {
+                        const int neighbor = edge.first;
+                        if (visited[neighbor] == traversalTag) {
+                            continue;
+                        }
+
+                        visited[neighbor] = traversalTag;
+                        distances[neighbor] = distances[currentVertex] + 1;
+                        frontier.push(neighbor);
+
+                        sumDistances += static_cast<double>(distances[neighbor]);
+                    }
+                }
+                ++traversalTag;
+
+                // formula del informe
+                if (sumDistances > 0.0) {
+                    closenessScores[source] = (vertexCount - 1) / sumDistances;
+                } else {
+                    closenessScores[source] = 0.0; // Nodo aislado
+                }
+            }
+        } else {
+            // Version BFS para Grafos Generales / Matrices
+            for (int source = 0; source < vertexCount; ++source) {
+                std::vector<double> distances(vertexCount, infinity);
+                distances[source] = 0.0;
+                std::queue<int> frontier;
+                frontier.push(source);
+
+                double sumDistances = 0.0;
+
+                while (!frontier.empty()) {
+                    const int currentVertex = frontier.front();
+                    frontier.pop();
+
+                    for (int neighbor : g.getNeighbors(currentVertex)) {
+                        if (distances[neighbor] != infinity) continue;
+
+                        distances[neighbor] = distances[currentVertex] + 1.0;
+                        frontier.push(neighbor);
+                        sumDistances += distances[neighbor];
+                    }
+                }
+
+                if (sumDistances > 0.0) closenessScores[source] = (vertexCount - 1) / sumDistances;
+                else closenessScores[source] = 0.0;
+            }
+        }
+    } 
+  
+    // CASO 2: Dijkstra para Grafos Ponderados
+  
+    else {
+        for (int source = 0; source < vertexCount; ++source) {
+            std::vector<double> distances(vertexCount, infinity);
+            distances[source] = 0.0;
+
+            using QueueEntry = std::pair<double, int>;
+            std::priority_queue<QueueEntry, std::vector<QueueEntry>, std::greater<QueueEntry>> frontier;
+            frontier.push({0.0, source});
+
+            while (!frontier.empty()) {
+                const auto [currentDistance, currentVertex] = frontier.top();
+                frontier.pop();
+
+                if (currentDistance > distances[currentVertex]) continue;
+
+                if (hasAdjacencyListFastPath) {
+                    for (const auto& edge : listGraph->getAdjacencyListRef(currentVertex)) {
+                        const int neighbor = edge.first;
+                        const double edgeWeight = edge.second;
+                        if (edgeWeight <= 0.0) continue;
+
+                        const double candidateDistance = currentDistance + edgeWeight;
+                        if (candidateDistance < distances[neighbor]) {
+                            distances[neighbor] = candidateDistance;
+                            frontier.push({candidateDistance, neighbor});
+                        }
+                    }
+                } else {
+                    for (int neighbor : g.getNeighbors(currentVertex)) {
+                        const double edgeWeight = g.getWeight(currentVertex, neighbor);
+                        if (edgeWeight <= 0.0) continue;
+
+                        const double candidateDistance = currentDistance + edgeWeight;
+                        if (candidateDistance < distances[neighbor]) {
+                            distances[neighbor] = candidateDistance;
+                            frontier.push({candidateDistance, neighbor});
+                        }
+                    }
+                }
+            }
+
+            // Una vez terminadas las rutas de Dijkstra, sumamos las distancias validas
+            double sumDistances = 0.0;
+            for (int target = 0; target < vertexCount; ++target) {
+                if (target != source && distances[target] != infinity) {
+                    sumDistances += distances[target];
+                }
+            }
+
+            if (sumDistances > 0.0) closenessScores[source] = (vertexCount - 1) / sumDistances;
+            else closenessScores[source] = 0.0;
+        }
+    }
+
+    
+    //PASAR A VECTOR Y ORDENAR
+    
+    for (const auto& par : closenessScores) {
+        rankingFinal.push_back(par);
+    }
+
+    std::sort(rankingFinal.begin(), rankingFinal.end(), [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
+        return a.second > b.second; 
+    });
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> duracion = end - start;
+
+    return std::make_pair(rankingFinal, duracion.count());
+}
 
 
 // 4. PageRank
