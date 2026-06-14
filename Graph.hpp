@@ -35,6 +35,7 @@ public:
     void removeEdge(int u, int v) override;
     int getNumVertices() const override;
     std::vector<int> getNeighbors(int vertex) const override;
+    const std::vector<std::pair<int, double>>& getAdjacencyListRef(int vertex) const;
     void print() const override;
 };
 

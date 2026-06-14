@@ -71,6 +71,11 @@ std::vector<int> GraphList::getNeighbors(int vertex) const {
     return vecinos;
 }
 
+const std::vector<std::pair<int, double>>& GraphList::getAdjacencyListRef(int vertex) const {
+    if (vertex < 0 || vertex >= adjList.size()) throw std::out_of_range("Vértice no creado");
+    return adjList[vertex];
+}
+
 double GraphList::getWeight(int u, int v) const {
     if (u < 0 || u >= adjList.size() || v < 0 || v >= adjList.size()) return 0.0;
     

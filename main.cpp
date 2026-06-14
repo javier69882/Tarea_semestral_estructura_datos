@@ -1,14 +1,52 @@
 #include <iostream>
+#include <chrono>
+#include <iomanip>
 #include <string>
 #include <vector>
+#ifdef _WIN32
+#include <windows.h>
+#include <psapi.h>
+#endif
 #include "Graph.hpp"
+#include "Centrality.hpp"
 #include "parser_proteinas.hpp" 
 #include "parser_trade.hpp" 
 //COMPILADO
-//g++ main.cpp Graph.cpp parser_proteinas.cpp parser_trade.cpp -o proyecto_grafos
+//g++ main.cpp Graph.cpp parser_proteinas.cpp parser_trade.cpp Centrality.cpp -o proyecto_grafos
 //./proyecto_grafos proteinas
 // O 
 //./proyecto_grafos trade
+
+#ifdef _WIN32
+static std::size_t getCurrentProcessMemoryBytes() {
+    PROCESS_MEMORY_COUNTERS_EX counters{};
+    if (GetProcessMemoryInfo(GetCurrentProcess(), reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&counters), sizeof(counters))) {
+        return static_cast<std::size_t>(counters.WorkingSetSize);
+    }
+    return 0;
+}
+#else
+static std::size_t getCurrentProcessMemoryBytes() {
+    return 0;
+}
+#endif
+
+// benchmark de la metrica 5. Average Shortest Path, con medicion de tiempo
+static void printAverageShortestPathBenchmark(const Graph& graph, const std::string& datasetLabel) {
+    const auto start = std::chrono::steady_clock::now();
+
+    const double averageShortestPath = Centrality::calculateAverageShortestPath(graph);
+
+    const auto end = std::chrono::steady_clock::now();
+    const auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    std::cout << "\n--- Average Shortest Path: " << datasetLabel << " ---\n";
+    std::cout << std::fixed << std::setprecision(6);
+    std::cout << "Resultado: " << averageShortestPath << "\n";
+    std::cout << "Tiempo: " << elapsedMs << " ms\n";
+    std::cout.unsetf(std::ios::floatfield);
+}
+
 int main(int argc, char* argv[]) {
     // Validar el argumento
     if (argc < 2) {
@@ -35,6 +73,9 @@ int main(int argc, char* argv[]) {
             std::cout << "\n--- Verificacion rapida ---\n";
             std::cout << "El nodo interno 0 corresponde a la proteina: " << traductor.id_a_nombre[0] << "\n";
             std::cout << "Grado (conexiones) del nodo 0: " << grafoProteinas.getNeighbors(0).size() << "\n";
+
+            // benchmark de metrica 5. Average Shortest Path
+            printAverageShortestPathBenchmark(grafoProteinas, "proteinas / yeast.edgelist");
         }
     } 
     // oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
@@ -56,6 +97,11 @@ int main(int argc, char* argv[]) {
             std::cout << "\n--- Evolucion de las exportaciones de CHINA ---\n";
             std::cout << "Paises a los que exportaba en 2000: " << redesComerciales[0].getNeighbors(idChina).size() << "\n";
             std::cout << "Paises a los que exportaba en 2018: " << redesComerciales[4].getNeighbors(idChina).size() << "\n";
+
+            for (std::size_t i = 0; i < archivosTrade.size(); ++i) {
+                // benchmark de metrica 5. Average Shortest Path
+                printAverageShortestPathBenchmark(redesComerciales[i], archivosTrade[i]);
+            }
         }
     } 
     // oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
