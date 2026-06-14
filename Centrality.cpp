@@ -8,6 +8,76 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
+#include <cmath> 
+#include <chrono> 
+#include <algorithm> 
+
+
+
+
+// 4. PageRank
+// Fuente: Algoritmo iterativo clásico (Page et al., 1999). Lógica de convergencia adaptada de NetworkX.
+std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculatePageRank(const Graph& g, double dampingFactor, int maxIterations, double tolerance) {
+    
+    auto start = std::chrono::high_resolution_clock::now();
+
+    int N = g.getNumVertices();
+    std::vector<std::pair<int, double>> rankingVacio;
+    if (N == 0) return std::make_pair(rankingVacio, 0.0);
+
+    // uso de variabbles temporales para el proceso iterativo
+    std::unordered_map<int, double> PR_old;
+    std::unordered_map<int, double> PR_new;
+
+    std::vector<std::vector<int>> inEdges(N);
+    std::vector<int> outDegree(N, 0);
+
+    // Inicialización
+    for (int i = 0; i < N; ++i) {
+        PR_old[i] = 1.0 / N; 
+        PR_new[i] = 0.0;
+        std::vector<int> neighbors = g.getNeighbors(i);
+        outDegree[i] = neighbors.size();
+        for (int v : neighbors) {
+            inEdges[v].push_back(i); 
+        }
+    }
+
+    // Proceso Iterativo
+    for (int iter = 0; iter < maxIterations; ++iter) {
+        double diff = 0.0; 
+
+        for (int u = 0; u < N; ++u) {
+            double sumatoria = 0.0;
+            for (int v : inEdges[u]) {
+                sumatoria += PR_old[v] / outDegree[v];
+            }
+            PR_new[u] = ((1.0 - dampingFactor) / N) + (dampingFactor * sumatoria);
+            diff += std::abs(PR_new[u] - PR_old[u]);
+        }
+
+        PR_old = PR_new;
+        if (diff < tolerance) break; 
+    }
+
+  
+    //PASAR A VECTOR Y ORDENAR 
+   
+    //Copiamos los resultados finales del mapa al vector de salida
+    std::vector<std::pair<int, double>> rankingFinal(PR_old.begin(), PR_old.end());
+
+    //Ordenamos el vector de mayor a menor puntaje usando sort de Stl, indicando que compare el segundo elemento del par (el puntaje) para ordenar
+    std::sort(rankingFinal.begin(), rankingFinal.end(), [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
+        return a.second > b.second; 
+    });
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> duracion = end - start;
+
+    // Retornamos el vector ya ordenado y el tiempo
+    return std::make_pair(rankingFinal, duracion.count());
+}
+
 
 // 5. Average Shortest Path
 double Centrality::calculateAverageShortestPath(const Graph& g) {

@@ -3,6 +3,8 @@
 #include <iomanip>
 #include <string>
 #include <vector>
+
+#include "Centrality.hpp"
 #ifdef _WIN32
 #include <windows.h>
 #include <psapi.h>
@@ -77,6 +79,24 @@ int main(int argc, char* argv[]) {
             // benchmark de metrica 5. Average Shortest Path
             printAverageShortestPathBenchmark(grafoProteinas, "proteinas / yeast.edgelist");
         }
+         // ==========================================
+        // ANÁLISIS DE CENTRALIDAD: PAGERANK
+        // ==========================================
+        auto resultadoPR_Prot = Centrality::calculatePageRank(grafoProteinas); 
+
+        std::vector<std::pair<int, double>> topProteinas = resultadoPR_Prot.first;
+        double tiempoMs_Prot = resultadoPR_Prot.second;
+
+        std::cout << "\nPageRank calculado en " << tiempoMs_Prot << " ms.\n";
+        std::cout << "--- TOP 5 PROTEINAS MAS CRITICAS (Nodos Hub) ---\n";
+
+        for (int i = 0; i < 5 && i < topProteinas.size(); i++) {
+            int idNodo = topProteinas[i].first;
+            double puntaje = topProteinas[i].second;
+            
+            std::cout << i + 1 << ". " << traductor.id_a_nombre[idNodo] 
+                      << " (Puntaje: " << puntaje << ")\n";
+        }
     } 
     // oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
     // ESCENARIO 2: RED DE COMERCIO (TRADE)
@@ -103,6 +123,21 @@ int main(int argc, char* argv[]) {
                 printAverageShortestPathBenchmark(redesComerciales[i], archivosTrade[i]);
             }
         }
+         auto resultadoPR = Centrality::calculatePageRank(redesComerciales[4]); // Año 2018
+
+std::vector<std::pair<int, double>> topPaises = resultadoPR.first;
+double tiempoMs = resultadoPR.second;
+
+std::cout << "PageRank calculado en " << tiempoMs << " ms.\n";
+std::cout << "--- TOP 5 POTENCIAS COMERCIALES (2018) ---\n";
+
+for (int i = 0; i < 5 && i < topPaises.size(); i++) {
+    int idNodo = topPaises[i].first;
+    double puntaje = topPaises[i].second;
+    
+    std::cout << i + 1 << ". " << traductor.id_a_nombre[idNodo] 
+              << " (Puntaje: " << puntaje << ")\n";
+}
     } 
     // oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
     // ESCENARIO 3: MODO DESCONOCIDO

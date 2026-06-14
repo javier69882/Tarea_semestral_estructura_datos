@@ -22,7 +22,7 @@ public:
 
     // 4. PageRank
     // Fuente: Algoritmo iterativo clásico (Page et al., 1999). Lógica de convergencia adaptada de NetworkX.
-    static std::unordered_map<int, double> calculatePageRank(const Graph& g, double dampingFactor = 0.85, int maxIterations = 100, double tolerance = 1e-6);
+    static std::pair<std::vector<std::pair<int, double>>, double> calculatePageRank(const Graph& g, double dampingFactor = 0.85, int maxIterations = 100, double tolerance = 1e-6);
 
     // 5. Average Shortest Path
     // Fuente: Newman, M. E. J. (2018). "Networks". Requiere All-Pairs Shortest Path.
