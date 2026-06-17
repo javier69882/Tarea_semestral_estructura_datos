@@ -13,6 +13,133 @@
 #include <algorithm> 
 
 
+// 1. Degree Centrality
+std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateDegreeCentrality(const Graph& g, bool isDirected) {
+    auto start = std::chrono::high_resolution_clock::now();
+
+    int vertexCount = g.getNumVertices();
+    std::vector<std::pair<int, double>> rankingFinal;
+
+    // Caso borde: verificamos si el grafo está vacío o tiene 1 nodo
+    if (vertexCount <= 1) {
+        return std::make_pair(rankingFinal, 0.0);
+    }
+
+    std::unordered_map<int, double> degreeScores;
+    // V - 1 para la normalización
+    double maxConexiones = static_cast<double>(vertexCount - 1);
+
+    // Recorremos usando la interfaz pública del ADT Grafo
+    for (int i = 0; i < vertexCount; ++i) {
+        // g.getNeighbors(i) devuelve el vector de vecinos. Su tamaño es el grado.
+        double grado = static_cast<double>(g.getNeighbors(i).size()); 
+        
+        degreeScores[i] = grado / maxConexiones; 
+    }
+
+// --- BLOQUE DE ORDENAMIENTO ESTANDARIZADO ---
+    for (const auto& par : degreeScores) {
+        rankingFinal.emplace_back(par.first, par.second); 
+    }
+
+    std::sort(rankingFinal.begin(), rankingFinal.end(), [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
+        return a.second > b.second; // Orden descendente
+    });
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> duracion = end - start;
+
+    return std::make_pair(rankingFinal, duracion.count());
+}
+
+// 2. Betweenness Centrality
+// El siguiente bloque implementa el Algoritmo de Brandes para la centralidad de intermediación.
+// La estructura de estructuras de datos (uso de P, sigma, d, delta y S) fue adaptada a partir 
+// de la lógica fundacional descrita en "A Faster Algorithm for Betweenness Centrality" (Brandes, 2001)
+// y guiada por las convenciones de la Boost Graph Library (BGL) para C++.
+std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateBetweennessCentrality(const Graph& g) {
+    auto start = std::chrono::high_resolution_clock::now();
+
+    int n = g.getNumVertices();
+    std::vector<std::pair<int, double>> rankingFinal;
+    if (n <= 1) return std::make_pair(rankingFinal, 0.0);
+
+    // Mapa para acumular los puntajes de intermediación
+    std::unordered_map<int, double> cb;
+    for (int i = 0; i < n; ++i) cb[i] = 0.0;
+
+    // El algoritmo de Brandes itera tomando cada nodo como "fuente" (s)
+    for (int s = 0; s < n; ++s) {
+        std::stack<int> S; // Pila para guardar el orden de visita y hacer el cálculo hacia atrás
+        std::vector<std::vector<int>> P(n); // Lista de predecesores en el camino más corto
+        std::vector<int> sigma(n, 0); // Número de caminos más cortos desde 's' hasta 'v'
+        sigma[s] = 1;
+        std::vector<int> d(n, -1); // Distancias
+        d[s] = 0;
+        std::queue<int> Q;
+        Q.push(s);
+
+        // Fase 1: BFS para encontrar los caminos más cortos y contar las multiplicidades (sigma)
+        while (!Q.empty()) {
+            int v = Q.front();
+            Q.pop();
+            S.push(v); // Se apila para procesar en orden inverso luego
+
+            for (int w : g.getNeighbors(v)) {
+                // Si 'w' se descubre por primera vez
+                if (d[w] < 0) {
+                    Q.push(w);
+                    d[w] = d[v] + 1;
+                }
+                // Si el camino a través de 'v' es un camino más corto hacia 'w'
+                if (d[w] == d[v] + 1) {
+                    sigma[w] += sigma[v];
+                    P[w].push_back(v);
+                }
+            }
+        }
+
+        // Fase 2: Acumulación de dependencias hacia atrás
+        std::vector<double> delta(n, 0.0);
+        while (!S.empty()) {
+            int w = S.top();
+            S.pop();
+            for (int v : P[w]) {
+                // Cálculo de la fracción de caminos que pasan por v
+                delta[v] += (static_cast<double>(sigma[v]) / sigma[w]) * (1.0 + delta[w]);
+            }
+            if (w != s) {
+                cb[w] += delta[w];
+            }
+        }
+    }
+
+    // Fase 3: Normalización y Traslado a Vector (Grafo no 
+    double divisorNormalizacion = static_cast<double>((n - 1) * (n - 2)); 
+    
+    for (const auto& par : cb) {
+        // En grafos no dirigidos, cada camino se cuenta dos veces, por eso el / 2.0 extra.
+        double valorCentralidad = (par.second / 2.0); 
+        
+        // Si desean normalizar la métrica entre 0 y 1 para comparar grafos de distinto tamaño:
+        if (divisorNormalizacion > 0) {
+            valorCentralidad = valorCentralidad / divisorNormalizacion;
+        }
+
+        rankingFinal.emplace_back(par.first, valorCentralidad);
+    }
+
+    // Ordenamiento estandarizado
+    std::sort(rankingFinal.begin(), rankingFinal.end(), [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
+        return a.second > b.second;
+    });
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> duracion = end - start;
+
+    return std::make_pair(rankingFinal, duracion.count());
+}
+
 // 3. Closeness Centrality
 std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClosenessCentrality(const Graph& g) {
     auto start = std::chrono::high_resolution_clock::now();
@@ -445,3 +572,167 @@ double Centrality::calculateAverageShortestPath(const Graph& g) {
 
 	return totalDistance / static_cast<double>(reachablePairs);
 }
+
+// 6. Network Diameter
+// Fuente algorítmica: NetworkX Reference. Obtiene el máximo de las distancias mínimas.
+double Centrality::calculateNetworkDiameter(const Graph& g) {
+    const int vertexCount = g.getNumVertices();
+    if (vertexCount <= 1) {
+        return 0.0;
+    }
+
+    const GraphList* listGraph = dynamic_cast<const GraphList*>(&g);
+    const bool hasAdjacencyListFastPath = (listGraph != nullptr);
+
+    bool isUnweightedGraph = true; 
+    const double unitWeight = 1.0;
+    const double epsilon = 1e-9;
+    
+    // Verificación de grafo ponderado o no (Igual que en ASP)
+    if (hasAdjacencyListFastPath) {
+        for (int u = 0; u < vertexCount && isUnweightedGraph; ++u) {
+            for (const auto& edge : listGraph->getAdjacencyListRef(u)) {
+                if (edge.second <= 0.0 || std::fabs(edge.second - unitWeight) > epsilon) {
+                    isUnweightedGraph = false;
+                    break;
+                }
+            }
+        }
+    } else {
+        for (int u = 0; u < vertexCount && isUnweightedGraph; ++u) {
+            for (int v : g.getNeighbors(u)) {
+                const double edgeWeight = g.getWeight(u, v);
+                if (edgeWeight <= 0.0 || std::fabs(edgeWeight - unitWeight) > epsilon) {
+                    isUnweightedGraph = false;
+                    break;
+                }
+            }
+        }
+    }
+
+    const double infinity = std::numeric_limits<double>::infinity();
+    double globalDiameter = 0.0; // Aquí guardaremos la distancia máxima encontrada
+
+    // CASO 1: BFS para Grafos No Ponderados
+    if (isUnweightedGraph) {
+        if (hasAdjacencyListFastPath) {
+            std::vector<int> distances(vertexCount, 0);
+            std::vector<int> visited(vertexCount, 0);
+            int traversalTag = 1;
+
+            for (int source = 0; source < vertexCount; ++source) {
+                if (traversalTag == std::numeric_limits<int>::max()) {
+                    std::fill(visited.begin(), visited.end(), 0);
+                    traversalTag = 1;
+                }
+
+                visited[source] = traversalTag;
+                distances[source] = 0;
+                std::queue<int> frontier;
+                frontier.push(source);
+
+                while (!frontier.empty()) {
+                    const int currentVertex = frontier.front();
+                    frontier.pop();
+
+                    for (const auto& edge : listGraph->getAdjacencyListRef(currentVertex)) {
+                        const int neighbor = edge.first;
+                        if (visited[neighbor] == traversalTag) {
+                            continue;
+                        }
+
+                        visited[neighbor] = traversalTag;
+                        distances[neighbor] = distances[currentVertex] + 1;
+                        frontier.push(neighbor);
+
+                        // Actualizamos el diámetro global si encontramos un camino más largo
+                        if (distances[neighbor] > globalDiameter) {
+                            globalDiameter = distances[neighbor];
+                        }
+                    }
+                }
+                ++traversalTag;
+            }
+        } else {
+            for (int source = 0; source < vertexCount; ++source) {
+                std::vector<double> distances(vertexCount, infinity);
+                distances[source] = 0.0;
+                std::queue<int> frontier;
+                frontier.push(source);
+
+                while (!frontier.empty()) {
+                    const int currentVertex = frontier.front();
+                    frontier.pop();
+
+                    for (int neighbor : g.getNeighbors(currentVertex)) {
+                        if (distances[neighbor] != infinity) {
+                            continue;
+                        }
+
+                        distances[neighbor] = distances[currentVertex] + 1.0;
+                        frontier.push(neighbor);
+
+                        if (distances[neighbor] > globalDiameter) {
+                            globalDiameter = distances[neighbor];
+                        }
+                    }
+                }
+            }
+        }
+    } 
+    // CASO 2: Dijkstra para Grafos Ponderados
+    else {
+        for (int source = 0; source < vertexCount; ++source) {
+            std::vector<double> distances(vertexCount, infinity);
+            distances[source] = 0.0;
+
+            using QueueEntry = std::pair<double, int>;
+            std::priority_queue<QueueEntry, std::vector<QueueEntry>, std::greater<QueueEntry>> frontier;
+            frontier.push({0.0, source});
+
+            while (!frontier.empty()) {
+                const auto [currentDistance, currentVertex] = frontier.top();
+                frontier.pop();
+
+                if (currentDistance > distances[currentVertex]) {
+                    continue;
+                }
+
+                if (hasAdjacencyListFastPath) {
+                    for (const auto& edge : listGraph->getAdjacencyListRef(currentVertex)) {
+                        const int neighbor = edge.first;
+                        const double edgeWeight = edge.second;
+                        if (edgeWeight <= 0.0) continue;
+
+                        const double candidateDistance = currentDistance + edgeWeight;
+                        if (candidateDistance < distances[neighbor]) {
+                            distances[neighbor] = candidateDistance;
+                            frontier.push({candidateDistance, neighbor});
+                        }
+                    }
+                } else {
+                    for (int neighbor : g.getNeighbors(currentVertex)) {
+                        const double edgeWeight = g.getWeight(currentVertex, neighbor);
+                        if (edgeWeight <= 0.0) continue;
+
+                        const double candidateDistance = currentDistance + edgeWeight;
+                        if (candidateDistance < distances[neighbor]) {
+                            distances[neighbor] = candidateDistance;
+                            frontier.push({candidateDistance, neighbor});
+                        }
+                    }
+                }
+            }
+
+            // Una vez que Dijkstra termina para este nodo fuente, buscamos la distancia máxima válida
+            for (int target = 0; target < vertexCount; ++target) {
+                if (distances[target] != infinity && distances[target] > globalDiameter) {
+                    globalDiameter = distances[target];
+                }
+            }
+        }
+    }
+
+    return globalDiameter;
+}
+
