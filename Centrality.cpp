@@ -346,7 +346,7 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculatePage
     std::vector<std::pair<int, double>> rankingVacio;
     if (N == 0) return std::make_pair(rankingVacio, 0.0);
 
-    // uso de variabbles temporales para el proceso iterativo
+    // Uso de variabbles temporales para el proceso iterativo
     std::unordered_map<int, double> PR_old;
     std::unordered_map<int, double> PR_new;
 
@@ -410,11 +410,11 @@ double Centrality::calculateAverageShortestPath(const Graph& g) {
 	const GraphList* listGraph = dynamic_cast<const GraphList*>(&g);
 	const bool hasAdjacencyListFastPath = (listGraph != nullptr);
 
-	bool isUnweightedGraph = true; // se diferencia entre grafo ponderado o no para elegir BFS o Dijkstra respectivamente
+	bool isUnweightedGraph = true; // Se diferencia entre grafo ponderado o no para elegir BFS o Dijkstra respectivamente
 	const double unitWeight = 1.0;
 	const double epsilon = 1e-9;
     
-    // verificacion de grafo ponderado o no
+    // Verificacion de grafo ponderado o no
 	if (hasAdjacencyListFastPath) {
 		for (int u = 0; u < vertexCount && isUnweightedGraph; ++u) {
 			for (const auto& edge : listGraph->getAdjacencyListRef(u)) {
@@ -441,7 +441,7 @@ double Centrality::calculateAverageShortestPath(const Graph& g) {
 	double totalDistance = 0.0;
 	std::size_t reachablePairs = 0;
 
-    // se usa BFS en este caso
+    // Se usa BFS en este caso
 	if (isUnweightedGraph) {
 		if (hasAdjacencyListFastPath) {
 			std::vector<int> distances(vertexCount, 0);
@@ -507,7 +507,7 @@ double Centrality::calculateAverageShortestPath(const Graph& g) {
 			}
 		}
 	} 
-    // se usa Dijkstra en este caso
+    // Se usa Dijkstra en este caso
     else {
 		for (int source = 0; source < vertexCount; ++source) {
 			std::vector<double> distances(vertexCount, infinity);
@@ -734,5 +734,74 @@ double Centrality::calculateNetworkDiameter(const Graph& g) {
     }
 
     return globalDiameter;
+}
+
+// 7. Eigenvector Centrality
+// Fuente algorítmica: Método de iteración de potencia (Power Iteration) detallado en Newman (2018).
+std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateEigenvectorCentrality(const Graph& g, int maxIterations, double tolerance) {
+    auto start = std::chrono::high_resolution_clock::now();
+
+    int N = g.getNumVertices();
+    std::vector<std::pair<int, double>> rankingFinal;
+    if (N == 0) return std::make_pair(rankingFinal, 0.0);
+
+    // Inicializamos todos los nodos con un valor de 1.0 / N
+    std::unordered_map<int, double> x_old;
+    std::unordered_map<int, double> x_new;
+    for (int i = 0; i < N; ++i) {
+        x_old[i] = 1.0 / N;
+        x_new[i] = 0.0;
+    }
+
+    // Proceso iterativo (Power Iteration)
+    for (int iter = 0; iter < maxIterations; ++iter) {
+        double sum_squares = 0.0;
+
+        // 1. Multiplicación del vector por la matriz/lista de adyacencia
+        for (int u = 0; u < N; ++u) {
+            double sumatoria_vecinos = 0.0;
+            // Solo sumamos la influencia de los vecinos directos
+            for (int v : g.getNeighbors(u)) {
+                sumatoria_vecinos += x_old[v]; 
+            }
+            x_new[u] = sumatoria_vecinos;
+            // Guardamos la suma de los cuadrados para la normalización posterior
+            sum_squares += x_new[u] * x_new[u]; 
+        }
+
+        // 2. Normalización (Euclidiana) para evitar que los valores tiendan a infinito
+        double norm = std::sqrt(sum_squares);
+        if (norm == 0) { // Caso borde de grafo totalmente desconectado
+            norm = 1.0;
+        }
+
+        double diff = 0.0;
+        for (int u = 0; u < N; ++u) {
+            x_new[u] = x_new[u] / norm;
+            // Calculamos la convergencia
+            diff += std::abs(x_new[u] - x_old[u]);
+        }
+
+        x_old = x_new;
+
+        // 3. Criterio de parada
+        if (diff < tolerance) {
+            break;
+        }
+    }
+
+    // Traslado al vector final y ordenamiento estandarizado
+    for (const auto& par : x_old) {
+        rankingFinal.emplace_back(par.first, par.second);
+    }
+
+    std::sort(rankingFinal.begin(), rankingFinal.end(), [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
+        return a.second > b.second;
+    });
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> duracion = end - start;
+
+    return std::make_pair(rankingFinal, duracion.count());
 }
 
