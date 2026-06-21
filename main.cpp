@@ -228,7 +228,21 @@ static void printAverageShortestPathBenchmark(const Graph& graph, const std::str
     std::cout << "Tiempo: " << elapsedMs << " ms\n";
     std::cout.unsetf(std::ios::floatfield);
 }
+// benchmark de la metrica 6. Network Diameter, con medicion de tiempo
+static void printNetworkDiameterBenchmark(const Graph& graph, const std::string& datasetLabel) {
+    const auto start = std::chrono::steady_clock::now();
 
+    const double networkDiameter = Centrality::calculateNetworkDiameter(graph);
+
+    const auto end = std::chrono::steady_clock::now();
+    const auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    std::cout << "\n--- Network Diameter: " << datasetLabel << " ---\n";
+    std::cout << std::fixed << std::setprecision(6);
+    std::cout << "Resultado (Max Camino Corto): " << networkDiameter << "\n";
+    std::cout << "Tiempo: " << elapsedMs << " ms\n";
+    std::cout.unsetf(std::ios::floatfield);
+}
 // benchmark de la metrica 7. Eigenvector Centrality, con medicion de tiempo
 static void printEigenvectorCentralityBenchmark(const Graph& graph, const MapeoGrafo& traductor, const std::string& datasetLabel, const std::string& topLabel) {
     const auto start = std::chrono::steady_clock::now();
@@ -365,8 +379,9 @@ int main(int argc, char* argv[]) {
          if (grafoProteinas.getNumVertices() > 0) {
             printClosenessCentralityBenchmark(grafoProteinas, traductor, "proteinas / yeast.edgelist", "PROTEINAS CON MAYOR CERCANIA (Acceso rapido)");
          }
-         // NUEVA LLAMADA: benchmark de metrica 7. Eigenvector Centrality
+         // NUEVA LLAMADA: benchmark de metrica 7 y la 6. Eigenvector Centrality
         if (grafoProteinas.getNumVertices() > 0) {
+            printNetworkDiameterBenchmark(grafoProteinas, "proteinas / yeast.edgelist");
             printEigenvectorCentralityBenchmark(grafoProteinas, traductor, "proteinas / yeast.edgelist", "PROTEINAS CON MAYOR INFLUENCIA DE RED (Eigenvector)");
         }
     }
@@ -393,6 +408,7 @@ int main(int argc, char* argv[]) {
             for (std::size_t i = 0; i < archivosTrade.size(); ++i) {
                 // benchmark de metrica 5. Average Shortest Path
                 printAverageShortestPathBenchmark(redesComerciales[i], archivosTrade[i]);
+                printNetworkDiameterBenchmark(redesComerciales[i], archivosTrade[i]);
             }
         }
         
