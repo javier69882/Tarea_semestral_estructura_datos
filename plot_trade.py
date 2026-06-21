@@ -9,46 +9,58 @@ if len(sys.argv) != 2:
 csv_file = sys.argv[1]
 df = pd.read_csv(csv_file)
 
-# 1. Preparar datos
-df_times = df.iloc[:, 1:] 
-df_times.columns = ["Degree", "Betweenness", "Closeness", "PageRank", "Avg Path", "Diameter", "Eigenvector"]
+# Nombres limpios de las métricas evaluadas
+metricas = ["Degree", "Betweenness", "Closeness", "PageRank", "Avg Path", "Diameter", "Eigenvector"]
 anios = ['2000', '2005', '2010', '2015', '2018']
-df_times.index = anios
 
-# 2. Agrupar datos (Métricas en el Eje X, Años como barras)
-df_agrupado = df_times.T
+# Separamos las columnas de medias de las de varianzas basándonos en patrones de saltos
+df_means = df.iloc[:, 1::2]
+df_vars = df.iloc[:, 2::2]
 
-# 3. Dibujar el gráfico usando ESCALA LINEAL (normal)
-# Aumentamos un poco el largo de la imagen (figsize) para que quepan los textos
-ax = df_agrupado.plot(kind='bar', figsize=(15, 8), width=0.85, colormap='viridis')
+df_means.columns = metricas
+df_vars.columns = metricas
+df_means.index = anios
+df_vars.index = anios
 
-# 4. Configuración visual
-plt.title("Comparación de Rendimiento por Año (Trade Network)", fontsize=16, fontweight='bold')
+# Transponemos para agrupar por métrica en el eje X
+df_means_trans = df_means.T
+
+# Generación del lienzo gráfico (Escala Lineal para notar la diferencia de rendimiento)
+plt.figure(figsize=(16, 9))
+colormap_viridis = plt.cm.get_cmap('viridis')
+ax = df_means_trans.plot(kind='bar', figsize=(16, 9), width=0.85, colormap=colormap_viridis, edgecolor='black')
+
+plt.title("Rendimiento por Año: Tiempo Promedio y Varianza (Trade Network)", fontsize=16, fontweight='bold')
 plt.xlabel("Métricas de Centralidad", fontweight='bold', fontsize=12)
 plt.ylabel("Tiempo de Ejecución (milisegundos)", fontweight='bold', fontsize=12)
-
-plt.xticks(rotation=0) # Mantener los nombres de las métricas en horizontal
+plt.xticks(rotation=0)
+plt.grid(axis='y', linestyle='--', alpha=0.5)
 plt.legend(title="Año del Dataset", fontsize='11')
-plt.grid(axis='y', linestyle='--', alpha=0.7)
 
-# 5. EL TRUCO: Anotar el valor exacto sobre cada una de las barras
-for p in ax.patches:
-    valor = p.get_height()
-    if valor > 0:
-        # Colocamos el texto rotado a 90 grados para que no choquen entre sí
-        ax.annotate(f'{valor:.2f}', 
-                    (p.get_x() + p.get_width() / 2., valor), 
-                    ha='center', va='bottom', 
-                    fontsize=9, rotation=90, xytext=(0, 5), 
-                    textcoords='offset points')
+# Recorremos los contenedores de matplotlib para pintar los textos de promedio y varianza
+for i, container in enumerate(ax.containers):
+    anio = anios[i]
+    for j, bar in enumerate(container):
+        metrica = metricas[j]
+        mean_val = bar.get_height()
+        var_val = df_vars.loc[anio, metrica]
+        
+        if mean_val > 0:
+            # Formateamos la varianza en formato científico si es muy pequeña, o decimal estándar
+            str_var = f"{var_val:.1e}" if var_val < 0.01 else f"{var_val:.2f}"
+            texto_etiqueta = f"m: {mean_val:.2f}\nv: {str_var}"
+            
+            ax.annotate(texto_etiqueta, 
+                        (bar.get_x() + bar.get_width() / 2., mean_val), 
+                        ha='center', va='bottom', 
+                        fontsize=7.5, rotation=90, xytext=(0, 6), 
+                        textcoords='offset points')
 
-# Dar un 25% extra de espacio en la parte superior para que los textos no se corten
-plt.ylim(0, df_agrupado.max().max() * 1.25)
+# Brindamos espacio arriba para evitar que el texto choque con el borde superior
+plt.ylim(0, df_means_trans.max().max() * 1.35)
 
-# Guardar y mostrar
 plt.tight_layout()
 png_file = csv_file.rsplit('.', 1)[0] + "_lineal_completo.png"
-plt.savefig(png_file, dpi=300) # dpi=300 asegura calidad HD para el informe
+plt.savefig(png_file, dpi=300)
 print(f"Grafico guardado exitosamente como: {png_file}")
-
 plt.show()
