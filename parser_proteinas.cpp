@@ -13,15 +13,10 @@ MapeoGrafo cargarEdgeList(const std::string& rutaArchivo, Graph& grafo) {
 
     std::string nodoOrigen, nodoDestino;
     int idActual = 0;
- 
+
     //Leer el archivo linea por linea 
     while (archivo >> nodoOrigen >> nodoDestino) {
         
-        //Ignorar aristas con datos faltantes ("-") ---
-        if (nodoOrigen == "-" || nodoDestino == "-") {
-            continue; // Salta a la siguiente línea del archivo
-        }
-
         //Si no conocemos el nodo origen, lo registramos y creamos el vertice
         if (mapa.nombre_a_id.find(nodoOrigen) == mapa.nombre_a_id.end()) {
             mapa.nombre_a_id[nodoOrigen] = idActual++;
