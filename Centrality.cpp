@@ -4,6 +4,7 @@
 #include <functional>
 #include <limits>
 #include <queue>
+#include <stack>
 #include <cmath>
 #include <unordered_map>
 #include <vector>

@@ -3,7 +3,8 @@
 #include <iomanip>
 #include <string>
 #include <vector>
-
+#include <fstream> 
+#include <cmath>   
 #include "Centrality.hpp"
 #ifdef _WIN32
 #include <windows.h>
@@ -19,6 +20,70 @@
 // O 
 //./proyecto_grafos trade
 
+
+
+// OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+// GUÍA DE COMPILACIÓN Y EJECUCIÓN (WSL / Linux)
+// OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+
+// 1. COMPILAR 
+// g++ -O3 main.cpp Graph.cpp parser_proteinas.cpp parser_trade.cpp Centrality.cpp -o proyecto_grafos
+
+// 2. EJECUCIONES RAPIDAS (Verificación de resultados por consola):
+// ./proyecto_grafos proteinas
+// ./proyecto_grafos trade
+
+// 3. ESTUDIO EXPERIMENTAL (Genera archivos .csv de Centralidad y Memoria):
+// ./proyecto_grafos trade_test resultados_trade.csv
+// ./proyecto_grafos proteinas_test resultados_prot.csv
+
+// 4. GENERAR GRÁFICOS CON PYTHON (Usar python3 en WSL):
+ //en wsl hice 
+//sudo apt update
+//sudo apt install python3-pandas python3-matplotlib
+//  Gráficos de rendimiento y tiempos de Centralidad:
+// python3 plot_trade.py resultados_trade.csv
+//
+//  Gráficos de espacio en memoria RAM y tiempos de construcción:
+// python3 plot_memoria.py memoria_trade.csv
+// python3 plot_memoria.py memoria_prot.csv
+// OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+
+
+
+
+// oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+//CALCULO DE MEMORIA DEL ADT 
+// oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+static double calcularMemoriaGrafo(const Graph& g) {
+    int V = g.getNumVertices();
+
+    // 1. Intentamos castear a Lista de Adyacencia
+    const GraphList* listGraph = dynamic_cast<const GraphList*>(&g);
+    if (listGraph != nullptr) {
+        size_t bytesBase = sizeof(*listGraph); 
+        size_t bytesVectores = V * sizeof(std::vector<std::pair<int, double>>); 
+        size_t totalAristas = 0;
+        for (int i = 0; i < V; ++i) {
+            totalAristas += listGraph->getNeighbors(i).size();
+        }
+        size_t bytesAristas = totalAristas * sizeof(std::pair<int, double>); 
+        return (bytesBase + bytesVectores + bytesAristas) / 1024.0; // A Kilobytes
+    }
+
+    // 2. Intentamos castear a Matriz de Adyacencia
+    const GraphMatrix* matrixGraph = dynamic_cast<const GraphMatrix*>(&g);
+    if (matrixGraph != nullptr) {
+        size_t bytesBase = sizeof(*matrixGraph);
+        // El vector externo contiene V vectores internos
+        size_t bytesVectores = V * sizeof(std::vector<double>);
+        // La matriz real ocupa V * V celdas de tipo double (8 bytes cada una)
+        size_t bytesCeldas = (size_t)V * V * sizeof(double);
+        return (bytesBase + bytesVectores + bytesCeldas) / 1024.0; // A Kilobytes
+    }
+
+    return 0.0; 
+}
 #ifdef _WIN32
 static std::size_t getCurrentProcessMemoryBytes() {
     PROCESS_MEMORY_COUNTERS_EX counters{};
@@ -104,11 +169,65 @@ static void printAverageShortestPathBenchmark(const Graph& graph, const std::str
     std::cout.unsetf(std::ios::floatfield);
 }
 
+// OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+// FUNCIONES MODO TEST / 10 ITERACIONES
+// OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+
+// Helper que corre 10 iteraciones y retorna el tiempo promedio
+template <typename Func>
+static double runTop5Experiment(const std::string& metricName, const MapeoGrafo& traductor, Func centralityFunc) {
+    const int numRuns = 10;
+    std::vector<double> executionTimes(numRuns);
+    std::pair<std::vector<std::pair<int, double>>, double> finalResult;
+
+    std::cout << "  -> Evaluando " << metricName << " (" << numRuns << " iteraciones)...\n";
+
+    for (int i = 0; i < numRuns; ++i) {
+        auto start = std::chrono::high_resolution_clock::now();
+        finalResult = centralityFunc(); 
+        auto end = std::chrono::high_resolution_clock::now();
+        
+        std::chrono::duration<double, std::milli> duration = end - start;
+        executionTimes[i] = duration.count(); 
+    }
+
+    double sum = 0.0;
+    for (double t : executionTimes) sum += t;
+    return sum / numRuns; 
+}
+
+// Helper para métricas escalares (retorna tiempo promedio de 10 iteraciones)
+template <typename Func>
+static double runScalarExperiment(const std::string& metricName, Func centralityFunc) {
+    const int numRuns = 10;
+    std::vector<double> executionTimes(numRuns);
+    double finalResult = 0.0;
+
+    std::cout << "  -> Evaluando " << metricName << " (" << numRuns << " iteraciones)...\n";
+
+    for (int i = 0; i < numRuns; ++i) {
+        auto start = std::chrono::high_resolution_clock::now(); 
+        finalResult = centralityFunc();
+        auto end = std::chrono::high_resolution_clock::now(); 
+        
+        std::chrono::duration<double, std::milli> duration = end - start; 
+        executionTimes[i] = duration.count(); 
+    }
+
+    double sum = 0.0;
+    for (double t : executionTimes) sum += t;
+    return sum / numRuns;
+}
+
 int main(int argc, char* argv[]) {
     // Validar el argumento
     if (argc < 2) {
         std::cerr << "Error: Faltan parametros.\n";
-        std::cerr << "Uso correcto: ./proyecto_grafos [proteinas | trade]\n";
+        std::cerr << "Uso correcto:\n";
+        std::cerr << "  ./proyecto_grafos proteinas\n";
+        std::cerr << "  ./proyecto_grafos trade\n";
+        std::cerr << "  ./proyecto_grafos proteinas_test <archivo.csv>\n";
+        std::cerr << "  ./proyecto_grafos trade_test <archivo.csv>\n";
         return 1; // Terminamos el programa con error
     }
 
@@ -175,6 +294,101 @@ int main(int argc, char* argv[]) {
             printClosenessCentralityBenchmark(redesComerciales[4], traductor, "trade / 2018.net", "POTENCIAS COMERCIALES CON MAYOR CERCANIA (Acceso rapido)");
         }
     } 
+
+// OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+    // ESCENARIO 3: PROTEINAS TEST 
+    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+   else if (modo == "proteinas_test") {
+        if (argc < 3) return 1;
+        
+        std::ofstream csvCentralidad(argv[2]);
+        std::ofstream csvMemoria("memoria_prot.csv");
+        
+        // Medir tiempo de construcción
+        auto startConst = std::chrono::high_resolution_clock::now();
+        GraphList grafoProteinas(false); 
+        MapeoGrafo traductor = cargarEdgeList("datasets/yeast.edgelist", grafoProteinas);
+        auto endConst = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> t_const = endConst - startConst;
+
+        int n = grafoProteinas.getNumVertices();
+        if (n > 0) {
+            // Sacar cuenta de aristas totales
+            size_t e = 0;
+            for (int i = 0; i < n; ++i) e += grafoProteinas.getNeighbors(i).size();
+
+            // Exportar datos de Memoria
+            csvMemoria << "Dataset,Nodos,Aristas,Memoria_KB,TiempoConstruccion_ms\n";
+            csvMemoria << "yeast.edgelist," << n << "," << e << "," << calcularMemoriaGrafo(grafoProteinas) << "," << t_const.count() << "\n";
+            
+            // Exportar datos de Centralidad
+            csvCentralidad << "n,Degree_time(ms),Betweenness_time(ms),Closeness_time(ms),PageRank_time(ms),ASP_time(ms),Diameter_time(ms),Eigenvector_time(ms)\n";
+            std::cout << "Procesando dataset: yeast.edgelist (Nodos: " << n << ")\n";
+
+            double t_deg = runTop5Experiment("Degree", traductor, [&]() { return Centrality::calculateDegreeCentrality(grafoProteinas, false); });
+            double t_bet = runTop5Experiment("Betweenness", traductor, [&]() { return Centrality::calculateBetweennessCentrality(grafoProteinas); });
+            double t_clo = runTop5Experiment("Closeness", traductor, [&]() { return Centrality::calculateClosenessCentrality(grafoProteinas); });
+            double t_pr  = runTop5Experiment("PageRank", traductor, [&]() { return Centrality::calculatePageRank(grafoProteinas); });
+            double t_asp = runScalarExperiment("Average Path", [&]() { return Centrality::calculateAverageShortestPath(grafoProteinas); });
+            double t_dia = runScalarExperiment("Diameter", [&]() { return Centrality::calculateNetworkDiameter(grafoProteinas); });
+            double t_eig = runTop5Experiment("Eigenvector", traductor, [&]() { return Centrality::calculateEigenvectorCentrality(grafoProteinas); });
+
+            csvCentralidad << n << ',' << t_deg << ',' << t_bet << ',' << t_clo << ',' << t_pr << ',' << t_asp << ',' << t_dia << ',' << t_eig << '\n';
+            std::cout << "-> Datos guardados exitosamente!\n";
+        }
+    }
+    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+    // ESCENARIO 4: TRADE TEST (NUEVO EXPERIMENTO CSV)
+    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+    else if (modo == "trade_test") {
+        if (argc < 3) return 1;
+
+        std::ofstream csvCentralidad(argv[2]);
+        std::ofstream csvMemoria("memoria_trade.csv"); // NUEVO ARCHIVO
+        
+        std::vector<std::string> archivosTrade = {"datasets/2000.net", "datasets/2005.net", "datasets/2010.net", "datasets/2015.net", "datasets/2018.net"};
+        std::vector<GraphList> redesComerciales(archivosTrade.size(), GraphList(true));
+        
+        MapeoGrafo traductor = cargarTradeNetworks(archivosTrade, redesComerciales);
+
+        csvCentralidad << "n,Degree_time(ms),Betweenness_time(ms),Closeness_time(ms),PageRank_time(ms),ASP_time(ms),Diameter_time(ms),Eigenvector_time(ms)\n";
+        csvMemoria << "Dataset,Nodos,Aristas,Memoria_KB,TiempoConstruccion_ms\n";
+
+        for (size_t i = 0; i < archivosTrade.size(); ++i) {
+            int n = redesComerciales[i].getNumVertices();
+            if (n == 0) continue;
+
+            // Para sacar el tiempo individual de construcción sin modificar el parser_trade, 
+            // leemos el dataset de forma aislada una vez más
+            auto startConst = std::chrono::high_resolution_clock::now();
+            std::vector<std::string> unArchivo = { archivosTrade[i] };
+            std::vector<GraphList> redUnica(1, GraphList(true));
+            cargarTradeNetworks(unArchivo, redUnica);
+            auto endConst = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> t_const = endConst - startConst;
+
+            // Obtener el número de aristas (Edges) sumando los vecinos
+            size_t e = 0;
+            for (int v = 0; v < n; ++v) e += redesComerciales[i].getNeighbors(v).size();
+
+            // Exportamos los datos de la rúbrica al CSV de memoria
+            csvMemoria << archivosTrade[i] << "," << n << "," << e << "," 
+                       << calcularMemoriaGrafo(redesComerciales[i]) << "," << t_const.count() << "\n";
+
+            std::cout << "Procesando dataset: " << archivosTrade[i] << " (Nodos: " << n << ")\n";
+
+            double t_deg = runTop5Experiment("Degree", traductor, [&]() { return Centrality::calculateDegreeCentrality(redesComerciales[i], true); });
+            double t_bet = runTop5Experiment("Betweenness", traductor, [&]() { return Centrality::calculateBetweennessCentrality(redesComerciales[i]); });
+            double t_clo = runTop5Experiment("Closeness", traductor, [&]() { return Centrality::calculateClosenessCentrality(redesComerciales[i]); });
+            double t_pr  = runTop5Experiment("PageRank", traductor, [&]() { return Centrality::calculatePageRank(redesComerciales[i]); });
+            double t_asp = runScalarExperiment("Average Path", [&]() { return Centrality::calculateAverageShortestPath(redesComerciales[i]); });
+            double t_dia = runScalarExperiment("Diameter", [&]() { return Centrality::calculateNetworkDiameter(redesComerciales[i]); });
+            double t_eig = runTop5Experiment("Eigenvector", traductor, [&]() { return Centrality::calculateEigenvectorCentrality(redesComerciales[i]); });
+
+            csvCentralidad << n << ',' << t_deg << ',' << t_bet << ',' << t_clo << ',' << t_pr << ',' << t_asp << ',' << t_dia << ',' << t_eig << '\n';
+        }
+        std::cout << "-> Todos los datos guardados en " << argv[2] << " y memoria_trade.csv\n";
+    }
     
     // escenario no reconocido
     else {
