@@ -117,7 +117,7 @@ static void printDegreeCentralityBenchmark(const Graph& graph, const MapeoGrafo&
     std::cout << "--- " << topLabel << " ---\n";
 
     std::cout << std::fixed << std::setprecision(6);
-    for (int i = 0; i < 5 && i < static_cast<int>(topNodos.size()); i++) {
+    for (int i = 0; i < 100 && i < static_cast<int>(topNodos.size()); i++) {
         const int idNodo = topNodos[i].first;
         const double puntaje = topNodos[i].second;
 
