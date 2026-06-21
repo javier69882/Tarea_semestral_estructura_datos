@@ -229,6 +229,35 @@ static void printAverageShortestPathBenchmark(const Graph& graph, const std::str
     std::cout.unsetf(std::ios::floatfield);
 }
 
+// benchmark de la metrica 7. Eigenvector Centrality, con medicion de tiempo
+static void printEigenvectorCentralityBenchmark(const Graph& graph, const MapeoGrafo& traductor, const std::string& datasetLabel, const std::string& topLabel) {
+    const auto start = std::chrono::steady_clock::now();
+
+    // Llamamos al cálculo iterativo de Newman
+    const auto resultadoEigenvector = Centrality::calculateEigenvectorCentrality(graph);
+
+    const auto end = std::chrono::steady_clock::now();
+    const auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    const std::vector<std::pair<int, double>>& topNodos = resultadoEigenvector.first;
+    const double tiempoMs = resultadoEigenvector.second;
+
+    std::cout << "\n--- Eigenvector Centrality: " << datasetLabel << " ---\n";
+    std::cout << "Eigenvector calculado en " << tiempoMs << " ms.\n";
+    std::cout << "Tiempo total del benchmark: " << elapsedMs << " ms\n";
+    std::cout << "--- " << topLabel << " ---\n";
+
+    std::cout << std::fixed << std::setprecision(6);
+    for (int i = 0; i < 5 && i < static_cast<int>(topNodos.size()); i++) {
+        const int idNodo = topNodos[i].first;
+        const double puntaje = topNodos[i].second;
+
+        std::cout << i + 1 << ". " << traductor.id_a_nombre[idNodo]
+                  << " (Puntaje: " << puntaje << ")\n";
+    }
+    std::cout.unsetf(std::ios::floatfield);
+}
+
 // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
 // FUNCIONES MODO TEST / 10 ITERACIONES
 // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
@@ -336,6 +365,10 @@ int main(int argc, char* argv[]) {
          if (grafoProteinas.getNumVertices() > 0) {
             printClosenessCentralityBenchmark(grafoProteinas, traductor, "proteinas / yeast.edgelist", "PROTEINAS CON MAYOR CERCANIA (Acceso rapido)");
          }
+         // NUEVA LLAMADA: benchmark de metrica 7. Eigenvector Centrality
+        if (grafoProteinas.getNumVertices() > 0) {
+            printEigenvectorCentralityBenchmark(grafoProteinas, traductor, "proteinas / yeast.edgelist", "PROTEINAS CON MAYOR INFLUENCIA DE RED (Eigenvector)");
+        }
     }
     // oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
     // ESCENARIO 2: RED DE COMERCIO (TRADE)
@@ -374,6 +407,7 @@ int main(int argc, char* argv[]) {
         
             // NUEVA LLAMADA: benchmark de metrica 2. Betweenness Centrality
             printBetweennessCentralityBenchmark(redesComerciales[4], traductor, "trade / 2018.net", "POTENCIAS COMERCIALES CON MAYOR INTERMEDIACION (Puentes Comerciales)", true);
+            printEigenvectorCentralityBenchmark(redesComerciales[4], traductor, "trade / 2018.net", "POTENCIAS COMERCIALES MAS INFLUYENTES (Eigenvector)");
         }
     }
 // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO

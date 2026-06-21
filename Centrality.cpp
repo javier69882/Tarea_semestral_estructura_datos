@@ -837,6 +837,10 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateEige
     std::vector<std::pair<int, double>> rankingFinal;
     if (N == 0) return std::make_pair(rankingFinal, 0.0);
 
+    //Optimización Fast Path (Acceso directo a la memoria de la lista de adyacencia)
+    const GraphList* listGraph = dynamic_cast<const GraphList*>(&g);
+    const bool hasAdjacencyListFastPath = (listGraph != nullptr);
+
     // Inicializamos todos los nodos con un valor de 1.0 / N
     std::unordered_map<int, double> x_old;
     std::unordered_map<int, double> x_new;
@@ -849,15 +853,26 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateEige
     for (int iter = 0; iter < maxIterations; ++iter) {
         double sum_squares = 0.0;
 
-        // 1. Multiplicación del vector por la matriz/lista de adyacencia
+        // 1. Multiplicación del vector por la matriz/lista de adyacencia (CON PESOS)
         for (int u = 0; u < N; ++u) {
             double sumatoria_vecinos = 0.0;
-            // Solo sumamos la influencia de los vecinos directos
-            for (int v : g.getNeighbors(u)) {
-                sumatoria_vecinos += x_old[v]; 
+            
+            if (hasAdjacencyListFastPath) {
+                // Versión rápida: Extraemos el vecino y su PESO directamente
+                for (const auto& edge : listGraph->getAdjacencyListRef(u)) {
+                    int v = edge.first;
+                    double weight = edge.second; // El peso real (Av,t)
+                    sumatoria_vecinos += x_old[v] * weight; 
+                }
+            } else {
+                // Versión estándar para matrices
+                for (int v : g.getNeighbors(u)) {
+                    double weight = g.getWeight(u, v); // El peso real (Av,t)
+                    sumatoria_vecinos += x_old[v] * weight; 
+                }
             }
+            
             x_new[u] = sumatoria_vecinos;
-            // Guardamos la suma de los cuadrados para la normalización posterior
             sum_squares += x_new[u] * x_new[u]; 
         }
 
@@ -896,4 +911,3 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateEige
 
     return std::make_pair(rankingFinal, duracion.count());
 }
-
