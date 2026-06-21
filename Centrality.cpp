@@ -82,56 +82,121 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateDegr
 // La estructura de estructuras de datos (uso de P, sigma, d, delta y S) fue adaptada a partir 
 // de la lógica fundacional descrita en "A Faster Algorithm for Betweenness Centrality" (Brandes, 2001)
 // y guiada por las convenciones de la Boost Graph Library (BGL) para C++.
-std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateBetweennessCentrality(const Graph& g) {
+// 2. Betweenness Centrality
+std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateBetweennessCentrality(const Graph& g, bool isDirected) {
     auto start = std::chrono::high_resolution_clock::now();
 
     int n = g.getNumVertices();
     std::vector<std::pair<int, double>> rankingFinal;
     if (n <= 1) return std::make_pair(rankingFinal, 0.0);
 
-    // Mapa para acumular los puntajes de intermediación
+    // Detección de grafo ponderado 
+    const GraphList* listGraph = dynamic_cast<const GraphList*>(&g);
+    const bool hasAdjacencyListFastPath = (listGraph != nullptr);
+    bool isUnweightedGraph = true;
+    const double unitWeight = 1.0;
+    const double epsilon = 1e-9;
+
+    if (hasAdjacencyListFastPath) {
+        for (int u = 0; u < n && isUnweightedGraph; ++u) {
+            for (const auto& edge : listGraph->getAdjacencyListRef(u)) {
+                if (edge.second <= 0.0 || std::fabs(edge.second - unitWeight) > epsilon) {
+                    isUnweightedGraph = false;
+                    break;
+                }
+            }
+        }
+    } else {
+        for (int u = 0; u < n && isUnweightedGraph; ++u) {
+            for (int v : g.getNeighbors(u)) {
+                double edgeWeight = g.getWeight(u, v);
+                if (edgeWeight <= 0.0 || std::fabs(edgeWeight - unitWeight) > epsilon) {
+                    isUnweightedGraph = false;
+                    break;
+                }
+            }
+        }
+    }
+
     std::unordered_map<int, double> cb;
     for (int i = 0; i < n; ++i) cb[i] = 0.0;
 
-    // El algoritmo de Brandes itera tomando cada nodo como "fuente" (s)
+    const double infinity = std::numeric_limits<double>::infinity();
+
     for (int s = 0; s < n; ++s) {
-        std::stack<int> S; // Pila para guardar el orden de visita y hacer el cálculo hacia atrás
-        std::vector<std::vector<int>> P(n); // Lista de predecesores en el camino más corto
-        std::vector<int> sigma(n, 0); // Número de caminos más cortos desde 's' hasta 'v'
-        sigma[s] = 1;
-        std::vector<int> d(n, -1); // Distancias
-        d[s] = 0;
-        std::queue<int> Q;
-        Q.push(s);
+        std::stack<int> S;
+        std::vector<std::vector<int>> P(n);
+        std::vector<double> sigma(n, 0.0);
+        sigma[s] = 1.0;
+        
+        // Fase 1: Encontrar caminos más cortos
+        if (isUnweightedGraph) {
+            //  BFS O(V + E) - Para grafos sin pesos
+            std::vector<int> d(n, -1);
+            d[s] = 0;
+            std::queue<int> Q;
+            Q.push(s);
 
-        // Fase 1: BFS para encontrar los caminos más cortos y contar las multiplicidades (sigma)
-        while (!Q.empty()) {
-            int v = Q.front();
-            Q.pop();
-            S.push(v); // Se apila para procesar en orden inverso luego
+            while (!Q.empty()) {
+                int v = Q.front();
+                Q.pop();
+                S.push(v);
 
-            for (int w : g.getNeighbors(v)) {
-                // Si 'w' se descubre por primera vez
-                if (d[w] < 0) {
-                    Q.push(w);
-                    d[w] = d[v] + 1;
+                for (int w : g.getNeighbors(v)) {
+                    if (d[w] < 0) {
+                        Q.push(w);
+                        d[w] = d[v] + 1;
+                    }
+                    if (d[w] == d[v] + 1) {
+                        sigma[w] += sigma[v];
+                        P[w].push_back(v);
+                    }
                 }
-                // Si el camino a través de 'v' es un camino más corto hacia 'w'
-                if (d[w] == d[v] + 1) {
-                    sigma[w] += sigma[v];
-                    P[w].push_back(v);
+            }
+        } else {
+            // DIJKSTRA O(V E + V^2 log V) - Para grafos con pesos
+            std::vector<double> d(n, infinity);
+            d[s] = 0.0;
+            using QueueEntry = std::pair<double, int>;
+            std::priority_queue<QueueEntry, std::vector<QueueEntry>, std::greater<QueueEntry>> Q;
+            Q.push({0.0, s});
+
+            while (!Q.empty()) {
+                auto [dist_v, v] = Q.top();
+                Q.pop();
+
+                if (dist_v > d[v]) continue;
+                S.push(v);
+
+                std::vector<int> neighbors = g.getNeighbors(v);
+                for (int w : neighbors) {
+                    double weight_vw = g.getWeight(v, w);
+                    if (weight_vw <= 0.0) continue; 
+                    
+                    double alt = d[v] + weight_vw;
+                    if (alt < d[w]) {
+                        d[w] = alt;
+                        Q.push({alt, w});
+                        sigma[w] = sigma[v];
+                        P[w].clear();
+                        P[w].push_back(v);
+                    } else if (std::fabs(alt - d[w]) < epsilon) {
+                        sigma[w] += sigma[v];
+                        P[w].push_back(v);
+                    }
                 }
             }
         }
 
-        // Fase 2: Acumulación de dependencias hacia atrás
+        // Fase 2: Acumulación hacia atrás (Brandes Backward Propagation)
         std::vector<double> delta(n, 0.0);
         while (!S.empty()) {
             int w = S.top();
             S.pop();
             for (int v : P[w]) {
-                // Cálculo de la fracción de caminos que pasan por v
-                delta[v] += (static_cast<double>(sigma[v]) / sigma[w]) * (1.0 + delta[w]);
+                if (sigma[w] != 0.0) {
+                    delta[v] += (sigma[v] / sigma[w]) * (1.0 + delta[w]);
+                }
             }
             if (w != s) {
                 cb[w] += delta[w];
@@ -139,14 +204,17 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateBetw
         }
     }
 
-    // Fase 3: Normalización y Traslado a Vector (Grafo no 
+    // Fase 3: Normalización matemática
     double divisorNormalizacion = static_cast<double>((n - 1) * (n - 2)); 
     
     for (const auto& par : cb) {
-        // En grafos no dirigidos, cada camino se cuenta dos veces, por eso el / 2.0 extra.
-        double valorCentralidad = (par.second / 2.0); 
+        double valorCentralidad = par.second;
         
-        // Si desean normalizar la métrica entre 0 y 1 para comparar grafos de distinto tamaño:
+        //  Solo dividimos por 2 si NO es dirigido
+        if (!isDirected) {
+            valorCentralidad = valorCentralidad / 2.0; 
+        }
+
         if (divisorNormalizacion > 0) {
             valorCentralidad = valorCentralidad / divisorNormalizacion;
         }
@@ -154,7 +222,6 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateBetw
         rankingFinal.emplace_back(par.first, valorCentralidad);
     }
 
-    // Ordenamiento estandarizado
     std::sort(rankingFinal.begin(), rankingFinal.end(), [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
         return a.second > b.second;
     });

@@ -127,6 +127,35 @@ static void printDegreeCentralityBenchmark(const Graph& graph, const MapeoGrafo&
     std::cout.unsetf(std::ios::floatfield);
 }
 
+// benchmark de la metrica 2. Betweenness Centrality, con medicion de tiempo
+static void printBetweennessCentralityBenchmark(const Graph& graph, const MapeoGrafo& traductor, const std::string& datasetLabel, const std::string& topLabel, bool isDirected) {
+    const auto start = std::chrono::steady_clock::now();
+
+    // Llamamos a la función de Brandes indicando si es dirigido o no
+    const auto resultadoBetweenness = Centrality::calculateBetweennessCentrality(graph, isDirected);
+
+    const auto end = std::chrono::steady_clock::now();
+    const auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    const std::vector<std::pair<int, double>>& topNodos = resultadoBetweenness.first;
+    const double tiempoMs = resultadoBetweenness.second;
+
+    std::cout << "\n--- Betweenness Centrality: " << datasetLabel << " ---\n";
+    std::cout << "Betweenness calculado en " << tiempoMs << " ms.\n";
+    std::cout << "Tiempo total del benchmark: " << elapsedMs << " ms\n";
+    std::cout << "--- " << topLabel << " ---\n";
+
+    std::cout << std::fixed << std::setprecision(6);
+    for (int i = 0; i < 5 && i < static_cast<int>(topNodos.size()); i++) {
+        const int idNodo = topNodos[i].first;
+        const double puntaje = topNodos[i].second;
+
+        std::cout << i + 1 << ". " << traductor.id_a_nombre[idNodo]
+                  << " (Puntaje: " << puntaje << ")\n";
+    }
+    std::cout.unsetf(std::ios::floatfield);
+}
+
 
 // benchmark de la metrica 3. Closeness Centrality, con medicion de tiempo
 static void printClosenessCentralityBenchmark(const Graph& graph, const MapeoGrafo& traductor, const std::string& datasetLabel, const std::string& topLabel) {
@@ -288,7 +317,10 @@ int main(int argc, char* argv[]) {
             std::cout << "\n--- Verificacion rapida ---\n";
             std::cout << "El nodo interno 0 corresponde a la proteina: " << traductor.id_a_nombre[0] << "\n";
             std::cout << "Grado (conexiones) del nodo 0: " << grafoProteinas.getNeighbors(0).size() << "\n";
-
+            
+            // NUEVA LLAMADA: benchmark de metrica 2. Betweenness Centrality
+            printBetweennessCentralityBenchmark(grafoProteinas, traductor, "proteinas / yeast.edgelist", "PROTEINAS CON MAYOR INTERMEDIACION (Puentes Biologicos)", false);
+            
             // NUEVA LLAMADA A DEGREE CENTRALITY (NO DIRIGIDO)
             printDegreeCentralityBenchmark(grafoProteinas, traductor, "proteinas / yeast.edgelist", "TOP 5 PROTEINAS CON MAYOR GRADO (Hubs)", false);
 
@@ -330,21 +362,20 @@ int main(int argc, char* argv[]) {
                 printAverageShortestPathBenchmark(redesComerciales[i], archivosTrade[i]);
             }
         }
-        if (redesComerciales[4].getNumVertices() > 0) {
-            printPageRankBenchmark(redesComerciales[4], traductor, "trade / 2018.net", "TOP 5 POTENCIAS COMERCIALES (2018)");
-        }
+        
         if (redesComerciales[4].getNumVertices() > 0) {
             // NUEVA LLAMADA A DEGREE CENTRALITY (DIRIGIDO)
             printDegreeCentralityBenchmark(redesComerciales[4], traductor, "trade / 2018.net", "TOP 5 POTENCIAS COMERCIALES POR GRADO (2018)", true);
             
             printPageRankBenchmark(redesComerciales[4], traductor, "trade / 2018.net", "TOP 5 POTENCIAS COMERCIALES (2018)");
-        }
-        // benchmark de metrica 3. Closeness Centrality
-        if (redesComerciales[4].getNumVertices() > 0) {
+            
+            // benchmark de metrica 3. Closeness Centrality
             printClosenessCentralityBenchmark(redesComerciales[4], traductor, "trade / 2018.net", "POTENCIAS COMERCIALES CON MAYOR CERCANIA (Acceso rapido)");
+        
+            // NUEVA LLAMADA: benchmark de metrica 2. Betweenness Centrality
+            printBetweennessCentralityBenchmark(redesComerciales[4], traductor, "trade / 2018.net", "POTENCIAS COMERCIALES CON MAYOR INTERMEDIACION (Puentes Comerciales)", true);
         }
-    } 
-
+    }
 // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
     // ESCENARIO 3: PROTEINAS TEST 
     // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO

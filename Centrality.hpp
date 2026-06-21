@@ -15,7 +15,7 @@ public:
 
     // 2. Betweenness Centrality
     // Fuente: Implementación basada en Brandes, U. (2001). "A faster algorithm for betweenness centrality".
-    static std::pair<std::vector<std::pair<int, double>>, double> calculateBetweennessCentrality(const Graph& g);
+   static std::pair<std::vector<std::pair<int, double>>, double> calculateBetweennessCentrality(const Graph& g, bool isDirected = false);
 
     // 3. Closeness Centrality
     // Fuente: Basado en el algoritmo de caminos más cortos de Dijkstra/BFS referenciado en NetworkX Developers (2026).
