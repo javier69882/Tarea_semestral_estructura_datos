@@ -14,6 +14,7 @@
 #include <algorithm> 
 
 
+
 // 1. Degree Centrality
 std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateDegreeCentrality(const Graph& g, bool isDirected) {
     auto start = std::chrono::high_resolution_clock::now();
@@ -30,15 +31,38 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateDegr
     // V - 1 para la normalización
     double maxConexiones = static_cast<double>(vertexCount - 1);
 
-    // Recorremos usando la interfaz pública del ADT Grafo
-    for (int i = 0; i < vertexCount; ++i) {
-        // g.getNeighbors(i) devuelve el vector de vecinos. Su tamaño es el grado.
-        double grado = static_cast<double>(g.getNeighbors(i).size()); 
-        
-        degreeScores[i] = grado / maxConexiones; 
+    if (!isDirected) {
+        //  Grafo No Dirigido
+        for (int i = 0; i < vertexCount; ++i) {
+            double grado = static_cast<double>(g.getNeighbors(i).size()); 
+            degreeScores[i] = grado / maxConexiones; 
+        }
+    } else {
+        //  Grafo Dirigido (In-degree y Out-degree)
+        std::vector<int> inDegree(vertexCount, 0);
+        std::vector<int> outDegree(vertexCount, 0);
+
+        // Recorremos todo el grafo para mapear quién apunta a quién
+        for (int u = 0; u < vertexCount; ++u) {
+            std::vector<int> neighbors = g.getNeighbors(u);
+            outDegree[u] = neighbors.size(); // Aristas que salen de 'u'
+            
+            for (int v : neighbors) {
+                inDegree[v]++; // Arista que entra a 'v'
+            }
+        }
+
+        // En un grafo dirigido, el máximo teórico de conexiones 
+        // (entrantes + salientes) para un solo nodo es 2 * (V - 1)
+        double maxConexionesDirigido = maxConexiones * 2.0;
+
+        for (int i = 0; i < vertexCount; ++i) {
+            double gradoTotal = static_cast<double>(inDegree[i] + outDegree[i]);
+            degreeScores[i] = gradoTotal / maxConexionesDirigido;
+        }
     }
 
-// --- BLOQUE DE ORDENAMIENTO ESTANDARIZADO ---
+    // --- BLOQUE DE ORDENAMIENTO ESTANDARIZADO ---
     for (const auto& par : degreeScores) {
         rankingFinal.emplace_back(par.first, par.second); 
     }
