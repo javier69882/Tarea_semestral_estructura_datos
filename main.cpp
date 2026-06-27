@@ -528,36 +528,53 @@ int main(int argc, char* argv[]) {
     }
     }
     
-    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
-    // ESCENARIO 5: EXPERIMENTO DE PERTURBACION (PROTEINAS)
-    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+// ESCENARIO 5: EXPERIMENTO DE PERTURBACION (PROTEINAS)
     else if (modo == "perturbacion_proteinas") {
         std::cout << "--- INICIANDO MODO: PERTURBACION PROTEINAS ---\n";
+        
+        std::ofstream csvPerturbacion("resultados_perturbacion_prot.csv");
+        if (!csvPerturbacion.is_open()) return 1;
+        
+        // ¡NUEVA CABECERA MÁS LIMPIA!
+        csvPerturbacion << "Dataset,Estado,Arista,Deg_Val,Bet_Val,Clo_Val,PR_Val,ASP_Val,Dia_Val,Eig_Val\n";
+
         GraphList grafoProteinas(false); 
         std::string rutaDataset = "datasets/yeast.edgelist"; 
-        cargarEdgeList(rutaDataset, grafoProteinas);
+        MapeoGrafo traductor = cargarEdgeList(rutaDataset, grafoProteinas);
 
         if (grafoProteinas.getNumVertices() > 0) {
-            // Llamamos a la clase externa para mantener el main limpio
-            Experimento::ejecutarPerturbacion(grafoProteinas);
+            Experimento::ejecutarPerturbacion(grafoProteinas, "yeast.edgelist", csvPerturbacion, traductor);
         }
-    }
-    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
-    // ESCENARIO 6: EXPERIMENTO DE PERTURBACION (TRADE 2018)
-    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
-    else if (modo == "perturbacion_trade") {
-        std::cout << "--- INICIANDO MODO: PERTURBACION TRADE (2018) ---\n";
-        std::vector<std::string> archivoUnico = {"datasets/2018.net"};
-        std::vector<GraphList> redUnica(1, GraphList(true));
         
-        cargarTradeNetworks(archivoUnico, redUnica);
-
-        if (redUnica[0].getNumVertices() > 0) {
-            Experimento::ejecutarPerturbacion(redUnica[0]);
-        }
+        std::cout << "\n-> Experimento finalizado.\n";
+        csvPerturbacion.close();
     }
+    // ESCENARIO 6: EXPERIMENTO DE PERTURBACION (TRADE MULTIPLE)
+    else if (modo == "perturbacion_trade") {
+        std::cout << "--- INICIANDO MODO: PERTURBACION TRADE (TODOS LOS AÑOS) ---\n";
+        
+        std::ofstream csvPerturbacion("resultados_perturbacion_trade.csv");
+        if (!csvPerturbacion.is_open()) return 1;
+        
+        // ¡NUEVA CABECERA MÁS LIMPIA!
+        csvPerturbacion << "Dataset,Estado,Arista,Deg_Val,Bet_Val,Clo_Val,PR_Val,ASP_Val,Dia_Val,Eig_Val\n";
 
+        std::vector<std::string> archivosTrade = {
+            "datasets/2000.net", "datasets/2005.net", "datasets/2010.net",
+            "datasets/2015.net", "datasets/2018.net"
+        };
+        std::vector<GraphList> redesComerciales(archivosTrade.size(), GraphList(true));
+        MapeoGrafo traductor = cargarTradeNetworks(archivosTrade, redesComerciales);
 
+        for (std::size_t i = 0; i < archivosTrade.size(); ++i) {
+            if (redesComerciales[i].getNumVertices() > 0) {
+                Experimento::ejecutarPerturbacion(redesComerciales[i], archivosTrade[i], csvPerturbacion, traductor);
+            }
+        }
+        
+        std::cout << "\n-> Experimento finalizado.\n";
+        csvPerturbacion.close();
+    }
     // escenario no reconocido
     else {
         std::cerr << "Error: Modo '" << modo << "' no reconocido.\n";
