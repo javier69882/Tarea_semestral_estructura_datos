@@ -21,6 +21,8 @@
 //./proyecto_grafos proteinas
 // O 
 //./proyecto_grafos trade
+// O
+// ./proyecto_grafos perturbacion_proteinas
 
 
 
