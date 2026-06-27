@@ -14,8 +14,10 @@
 #include "Centrality.hpp"
 #include "parser_proteinas.hpp" 
 #include "parser_trade.hpp" 
+#include "experimento.hpp"
+
 //COMPILADO
-//g++ main.cpp Graph.cpp parser_proteinas.cpp parser_trade.cpp Centrality.cpp -o proyecto_grafos
+//g++ main.cpp Graph.cpp parser_proteinas.cpp parser_trade.cpp Centrality.cpp Experimento.cpp -o proyecto_grafos
 //./proyecto_grafos proteinas
 // O 
 //./proyecto_grafos trade
@@ -524,6 +526,36 @@ int main(int argc, char* argv[]) {
     }
     }
     
+    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+    // ESCENARIO 5: EXPERIMENTO DE PERTURBACION (PROTEINAS)
+    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+    else if (modo == "perturbacion_proteinas") {
+        std::cout << "--- INICIANDO MODO: PERTURBACION PROTEINAS ---\n";
+        GraphList grafoProteinas(false); 
+        std::string rutaDataset = "datasets/yeast.edgelist"; 
+        cargarEdgeList(rutaDataset, grafoProteinas);
+
+        if (grafoProteinas.getNumVertices() > 0) {
+            // Llamamos a la clase externa para mantener el main limpio
+            Experimento::ejecutarPerturbacion(grafoProteinas);
+        }
+    }
+    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+    // ESCENARIO 6: EXPERIMENTO DE PERTURBACION (TRADE 2018)
+    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+    else if (modo == "perturbacion_trade") {
+        std::cout << "--- INICIANDO MODO: PERTURBACION TRADE (2018) ---\n";
+        std::vector<std::string> archivoUnico = {"datasets/2018.net"};
+        std::vector<GraphList> redUnica(1, GraphList(true));
+        
+        cargarTradeNetworks(archivoUnico, redUnica);
+
+        if (redUnica[0].getNumVertices() > 0) {
+            Experimento::ejecutarPerturbacion(redUnica[0]);
+        }
+    }
+
+
     // escenario no reconocido
     else {
         std::cerr << "Error: Modo '" << modo << "' no reconocido.\n";
