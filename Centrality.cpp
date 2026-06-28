@@ -13,7 +13,9 @@
 #include <chrono> 
 #include <algorithm> 
 
-
+/*  
+en Betweenness Centrality, Network Diameter,Closeness y Average Shortest Path, pusimos peso=1/peso porque en el dijsktra, si el peso es mayor, la distancia es menor, porque en realidad el de trade no mira distancias sino que movimiento de dinero, y . Por lo tanto, para que un peso mayor signifique una distancia menor, usamos 1/peso. Esto asegura que los caminos con pesos más altos se consideren más cortos en el cálculo de la centralidad y otras métricas relacionadas con la distancia.
+*/
 
 // 1. Degree Centrality
 std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateDegreeCentrality(const Graph& g, bool isDirected) {
@@ -170,8 +172,10 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateBetw
 
                 std::vector<int> neighbors = g.getNeighbors(v);
                 for (int w : neighbors) {
-                    double weight_vw = g.getWeight(v, w);
-                    if (weight_vw <= 0.0) continue; 
+                    const double weight = g.getWeight(v, w);
+                    if (weight <= 0.0) continue; 
+                    double weight_vw = 1/weight; 
+                    
                     
                     double alt = d[v] + weight_vw;
                     if (alt < d[w]) {
@@ -253,7 +257,7 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClos
     const double unitWeight = 1.0;
     const double epsilon = 1e-9;
     
-    // Verificacion de grafo ponderado o no igual que en avg first path, para elegir BFS o Dijkstra respectivamente
+    // Verificacion de grafo ponderado o no
     if (hasAdjacencyListFastPath) {
         for (int u = 0; u < vertexCount && isUnweightedGraph; ++u) {
             for (const auto& edge : listGraph->getAdjacencyListRef(u)) {
@@ -276,10 +280,9 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClos
     }
 
     const double infinity = std::numeric_limits<double>::infinity();
+    const double N_minus_1 = static_cast<double>(vertexCount - 1); // NUEVO: N-1 precalculado
 
-   
     // CASO 1: BFS para Grafos No Ponderados
-   
     if (isUnweightedGraph) {
         if (hasAdjacencyListFastPath) {
             std::vector<int> distances(vertexCount, 0);
@@ -297,7 +300,8 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClos
                 std::queue<int> frontier;
                 frontier.push(source);
 
-                double sumDistances = 0.0; // Acumulador local para el nodo source
+                double sumDistances = 0.0;
+                int reachableOtherNodes = 0; // NUEVO: Cuenta (n - 1)
 
                 while (!frontier.empty()) {
                     const int currentVertex = frontier.front();
@@ -314,13 +318,15 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClos
                         frontier.push(neighbor);
 
                         sumDistances += static_cast<double>(distances[neighbor]);
+                        reachableOtherNodes++; // NUEVO: Nodo alcanzado
                     }
                 }
                 ++traversalTag;
 
-                // formula del informe
+                // NUEVO: Formula de Wasserman y Faust
                 if (sumDistances > 0.0) {
-                    closenessScores[source] = (vertexCount - 1) / sumDistances;
+                    double n_minus_1 = static_cast<double>(reachableOtherNodes);
+                    closenessScores[source] = (n_minus_1 / N_minus_1) * (n_minus_1 / sumDistances);
                 } else {
                     closenessScores[source] = 0.0; // Nodo aislado
                 }
@@ -334,6 +340,7 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClos
                 frontier.push(source);
 
                 double sumDistances = 0.0;
+                int reachableOtherNodes = 0; // NUEVO: Cuenta (n - 1)
 
                 while (!frontier.empty()) {
                     const int currentVertex = frontier.front();
@@ -345,17 +352,22 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClos
                         distances[neighbor] = distances[currentVertex] + 1.0;
                         frontier.push(neighbor);
                         sumDistances += distances[neighbor];
+                        reachableOtherNodes++; // NUEVO: Nodo alcanzado
                     }
                 }
 
-                if (sumDistances > 0.0) closenessScores[source] = (vertexCount - 1) / sumDistances;
-                else closenessScores[source] = 0.0;
+                // NUEVO: Formula de Wasserman y Faust
+                if (sumDistances > 0.0) {
+                    double n_minus_1 = static_cast<double>(reachableOtherNodes);
+                    closenessScores[source] = (n_minus_1 / N_minus_1) * (n_minus_1 / sumDistances);
+                } else {
+                    closenessScores[source] = 0.0;
+                }
             }
         }
     } 
   
     // CASO 2: Dijkstra para Grafos Ponderados
-  
     else {
         for (int source = 0; source < vertexCount; ++source) {
             std::vector<double> distances(vertexCount, infinity);
@@ -374,8 +386,10 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClos
                 if (hasAdjacencyListFastPath) {
                     for (const auto& edge : listGraph->getAdjacencyListRef(currentVertex)) {
                         const int neighbor = edge.first;
-                        const double edgeWeight = edge.second;
-                        if (edgeWeight <= 0.0) continue;
+                        const double Weight = edge.second;
+                        if (Weight <= 0.0) continue;
+                           const double edgeWeight = 1/Weight; 
+
 
                         const double candidateDistance = currentDistance + edgeWeight;
                         if (candidateDistance < distances[neighbor]) {
@@ -385,8 +399,9 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClos
                     }
                 } else {
                     for (int neighbor : g.getNeighbors(currentVertex)) {
-                        const double edgeWeight = g.getWeight(currentVertex, neighbor);
-                        if (edgeWeight <= 0.0) continue;
+                        const double Weight = g.getWeight(currentVertex, neighbor);
+                        if (Weight <= 0.0) continue;
+                        const double edgeWeight = 1 / Weight;
 
                         const double candidateDistance = currentDistance + edgeWeight;
                         if (candidateDistance < distances[neighbor]) {
@@ -399,20 +414,26 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClos
 
             // Una vez terminadas las rutas de Dijkstra, sumamos las distancias validas
             double sumDistances = 0.0;
+            int reachableOtherNodes = 0; // Cuenta (n - 1)
+            
             for (int target = 0; target < vertexCount; ++target) {
                 if (target != source && distances[target] != infinity) {
                     sumDistances += distances[target];
+                    reachableOtherNodes++; //  Nodo alcanzado
                 }
             }
 
-            if (sumDistances > 0.0) closenessScores[source] = (vertexCount - 1) / sumDistances;
-            else closenessScores[source] = 0.0;
+            //  Formula de Wasserman y Faust
+            if (sumDistances > 0.0) {
+                double n_minus_1 = static_cast<double>(reachableOtherNodes);
+                closenessScores[source] = (n_minus_1 / N_minus_1) * (n_minus_1 / sumDistances);
+            } else {
+                closenessScores[source] = 0.0;
+            }
         }
     }
 
-    
-    //PASAR A VECTOR Y ORDENAR
-    
+    // PASAR A VECTOR Y ORDENAR
     for (const auto& par : closenessScores) {
         rankingFinal.push_back(par);
     }
@@ -620,10 +641,12 @@ double Centrality::calculateAverageShortestPath(const Graph& g) {
 				if (hasAdjacencyListFastPath) {
 					for (const auto& edge : listGraph->getAdjacencyListRef(currentVertex)) {
 						const int neighbor = edge.first;
-						const double edgeWeight = edge.second;
-						if (edgeWeight <= 0.0) {
+						const double Weight = edge.second;
+						if (Weight <= 0.0) {
 							continue;
 						}
+                        const double edgeWeight = 1 / Weight; // Invertimos el peso para que un peso mayor signifique una distancia menor
+                        
 
 						const double candidateDistance = currentDistance + edgeWeight;
 						if (candidateDistance < distances[neighbor]) {
@@ -633,10 +656,12 @@ double Centrality::calculateAverageShortestPath(const Graph& g) {
 					}
 				} else {
 					for (int neighbor : g.getNeighbors(currentVertex)) {
-						const double edgeWeight = g.getWeight(currentVertex, neighbor);
-						if (edgeWeight <= 0.0) {
+						const double Weight = g.getWeight(currentVertex, neighbor);
+						if (Weight <= 0.0) {
 							continue;
 						}
+                        const double edgeWeight = 1 / Weight; // Invertimos el peso para que un peso mayor signifique una distancia menor
+                        
 
 						const double candidateDistance = currentDistance + edgeWeight;
 						if (candidateDistance < distances[neighbor]) {
@@ -793,8 +818,9 @@ double Centrality::calculateNetworkDiameter(const Graph& g) {
                 if (hasAdjacencyListFastPath) {
                     for (const auto& edge : listGraph->getAdjacencyListRef(currentVertex)) {
                         const int neighbor = edge.first;
-                        const double edgeWeight = edge.second;
-                        if (edgeWeight <= 0.0) continue;
+                        const double Weight = edge.second;
+                        if (Weight <= 0.0) continue;
+                        const double edgeWeight = 1 / Weight; // Invertimos el peso para que un peso mayor signifique una distancia menor
 
                         const double candidateDistance = currentDistance + edgeWeight;
                         if (candidateDistance < distances[neighbor]) {
@@ -804,8 +830,9 @@ double Centrality::calculateNetworkDiameter(const Graph& g) {
                     }
                 } else {
                     for (int neighbor : g.getNeighbors(currentVertex)) {
-                        const double edgeWeight = g.getWeight(currentVertex, neighbor);
-                        if (edgeWeight <= 0.0) continue;
+                        const double Weight = g.getWeight(currentVertex, neighbor);
+                        if (Weight <= 0.0) continue;
+                        const double edgeWeight = 1 / Weight; // Invertimos el peso para que un peso mayor signifique una distancia menor
 
                         const double candidateDistance = currentDistance + edgeWeight;
                         if (candidateDistance < distances[neighbor]) {

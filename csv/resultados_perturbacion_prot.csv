@@ -1,0 +1,5 @@
+Dataset,Estado,Arista,Deg_Val,Bet_Val,Clo_Val,PR_Val,ASP_Val,Dia_Val,Eig_Val
+yeast.edgelist,Original,Ninguna,0.55433,0.0284943,0.685183,0.00331134,2.20921,6,0.106026
+yeast.edgelist,Perturbado_Hub,YDL160C-YCL030C,0.554176,0.0284575,0.685111,0.00331004,2.20923,6,0.106021
+yeast.edgelist,Perturbado_Periferia,snR62-YPR042C,0.55433,0.0284917,0.685327,0.00331096,2.20901,6,0.106026
+yeast.edgelist,Perturbado_Medio,YNR022C-YPR119W,0.55433,0.0284944,0.685183,0.00331135,2.20921,6,0.106026

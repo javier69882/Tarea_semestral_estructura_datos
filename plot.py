@@ -7,6 +7,7 @@
 #sudo apt install python3-pandas python3-matplotlib
 
 import sys
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -18,6 +19,7 @@ if len(sys.argv) != 2:
 # Convertir archivo CSV a DataFrame (tabla de datos)
 csv_file = sys.argv[1]
 df = pd.read_csv(csv_file) # Da error si no existe el archivo
+os.makedirs('graficos', exist_ok=True)
 
 # Graficar curvas de cada algoritmo (seleccionar las columnas por índice)
 sizes = df.iloc[:,0]      # Columna 0: n (Nodos)
@@ -48,7 +50,8 @@ plt.legend()
 plt.grid() 
 
 # Guardar automáticamente la imagen
-png_file = csv_file.rsplit('.', 1)[0] + ".png" 
+csv_base = os.path.splitext(os.path.basename(csv_file))[0]
+png_file = os.path.join('graficos', f"{csv_base}.png")
 plt.savefig(png_file) # Opcionalmente guardar gráfico
 print(f"Grafico guardado como: {png_file}")
 
