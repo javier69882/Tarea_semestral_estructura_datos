@@ -57,8 +57,8 @@ for i, container in enumerate(ax.containers):
         
         if mean_val > 0:
             # Formateamos la varianza en formato científico si es muy pequeña, o decimal estándar
-            str_var = f"{var_val:.1e}" if var_val < 0.01 else f"{var_val:.2f}"
-            texto_etiqueta = f"m: {mean_val:.2f}\nv: {str_var}\nmem: {mem_val:.4f} KB"
+            str_var = f"{var_val:.1e}" if var_val < 0.01 else f"{var_val:.8f}"
+            texto_etiqueta = f"m: {mean_val:.8f}\nv: {str_var}\nmem: {mem_val:.8f} KB"
             
             ax.annotate(texto_etiqueta, 
                         (bar.get_x() + bar.get_width() / 2., mean_val), 

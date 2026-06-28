@@ -19,6 +19,19 @@ try:
 
     # Diccionario para buscar rápidamente el nombre de la arista
     dict_aristas = {(str(row['Dataset']), row['Estado']): row['Arista'] for _, row in df.iterrows()}
+    
+    # NUEVO: Diccionario para buscar los nodos TOP 1 de cada métrica
+    # Usamos .get() por si el CSV antiguo no tiene estas columnas, así no da error
+    dict_tops = {}
+    for _, row in df.iterrows():
+        key = (str(row['Dataset']), row['Estado'])
+        dict_tops[key] = {
+            'Deg_Val': row.get('Deg_Top1', ''),
+            'Bet_Val': row.get('Bet_Top1', ''),
+            'Clo_Val': row.get('Clo_Top1', ''),
+            'PR_Val':  row.get('PR_Top1', ''),
+            'Eig_Val': row.get('Eig_Top1', '')
+        }
 
     metricas = [
         ('Deg_Val', 'Degree Centrality (Top 1)'),
@@ -46,8 +59,8 @@ try:
         if pd.isna(rango) or rango == 0:
             rango = max_val if max_val > 0 else 1.0
         
-        # Espacio extra arriba para el número, y abajo (negativo) para la arista
-        margen_sup = rango * 0.4
+        # Espacio extra arriba para el número + nombre, y abajo para la arista
+        margen_sup = rango * 0.7  # Aumentamos este margen porque el texto será más largo
         margen_inf = rango * 0.4
         
         # Hundimos el límite inferior para crear una "zona de texto" bajo las barras
@@ -65,13 +78,20 @@ try:
                 # Verificamos si realmente existía esta prueba en el CSV
                 fila_existe = (str(dataset), estado) in dict_aristas
                 
-                # Si el valor es nulo, o es 0 falso generado por Pandas en un espacio vacío, nos lo saltamos
+                # Si el valor es nulo, o es 0 falso generado por Pandas, nos saltamos
                 if np.isnan(val) or (val == 0.0 and not fila_existe):
                     continue
                 
-                # 1. Poner el número exacto arriba de la barra
-                axes[i].text(x_pos, val + (rango * 0.02), f'{val:.9f}',
-                             ha='center', va='bottom', rotation=90, fontsize=9)
+                # 1. Preparar el texto de arriba (Número exacto + Nombre Top 1 si existe)
+                texto_arriba = f'{val:.6f}'  # Bajé los decimales a 6 para no ocupar tanto espacio
+                nodo_top = dict_tops.get((str(dataset), estado), {}).get(col_val, "")
+                
+                if pd.notna(nodo_top) and str(nodo_top).strip() not in ["", "N/A", "nan"]:
+                    texto_arriba = f'{nodo_top} | {val:.6f}'
+                
+                # Poner el texto arriba de la barra
+                axes[i].text(x_pos, val + (rango * 0.03), texto_arriba,
+                             ha='center', va='bottom', rotation=90, fontsize=8)
                 
                 # 2. Poner la etiqueta de la arista cortada DEBAJO de las barras
                 if estado != 'Original':
@@ -101,9 +121,9 @@ try:
 
     plt.tight_layout()
     
-    nombre_archivo = os.path.join('graficos', 'panel_perturbacion_numeros.png')
+    nombre_archivo = os.path.join('graficos', 'panel_perturbacion_top_nodos.png')
     plt.savefig(nombre_archivo, dpi=300, bbox_inches='tight')
-    print(f"\n-> ¡Listo! El panel final arreglado fue guardado como '{nombre_archivo}'")
+    print(f"\n-> ¡Listo! El panel final fue guardado como '{nombre_archivo}'")
 
 except Exception as e:
     print(f"Ocurrió un error al procesar los datos: {e}")
