@@ -189,10 +189,14 @@ void Experimento::ejecutarAumento(Graph& g, const std::string& nombreDataset, st
     int hub1 = rankingBetweenness[0].first;
     int hub2 = -1;
     for (size_t i = 1; i < rankingBetweenness.size(); ++i) {
-        if (!sonVecinos(hub1, rankingBetweenness[i].first)) {
-            hub2 = rankingBetweenness[i].first;
-            break;
+        int candidato = rankingBetweenness[i].first;
+        if (candidato != hub1 && !sonVecinos(hub1, candidato)) {
+            hub2 = candidato;
+            break; 
         }
+    }
+    if (hub2 == -1 && rankingBetweenness.size() > 1) {
+        hub2 = rankingBetweenness[1].first;
     }
 
     if (hub2 != -1) {
@@ -215,6 +219,10 @@ void Experimento::ejecutarAumento(Graph& g, const std::string& nombreDataset, st
             peri1 = it->first;
             break;
         }
+    }
+
+    if (peri1 == -1 && !rankingDegree.empty()) {
+        peri1 = rankingDegree.back().first;
     }
 
     if (peri1 != -1) {
