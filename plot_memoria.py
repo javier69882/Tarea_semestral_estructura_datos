@@ -1,4 +1,5 @@
 import sys
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -8,6 +9,7 @@ if len(sys.argv) != 2:
 
 csv_file = sys.argv[1]
 df = pd.read_csv(csv_file)
+os.makedirs('graficos', exist_ok=True)
 
 # Limpiar los nombres de los archivos para que se vean bien en el gráfico
 df['Dataset'] = df['Dataset'].apply(lambda x: x.split('/')[-1].replace('.net', '').replace('.edgelist', ''))
@@ -39,7 +41,8 @@ plt.suptitle("Análisis Estructural y de Construcción", fontsize=16, fontweight
 plt.tight_layout()
 
 # Guardar imagen
-png_file = csv_file.replace('.csv', '_grafico.png')
+csv_base = os.path.splitext(os.path.basename(csv_file))[0]
+png_file = os.path.join('graficos', f"{csv_base}_grafico.png")
 plt.savefig(png_file, bbox_inches='tight', dpi=300)
 print(f"Grafico guardado exitosamente como: {png_file}")
 

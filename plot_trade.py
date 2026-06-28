@@ -1,4 +1,5 @@
 import sys
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -8,6 +9,7 @@ if len(sys.argv) != 2:
 
 csv_file = sys.argv[1]
 df = pd.read_csv(csv_file)
+os.makedirs('graficos', exist_ok=True)
 
 # Nombres limpios de las métricas evaluadas
 metricas = ["Degree", "Betweenness", "Closeness", "PageRank", "Avg Path", "Diameter", "Eigenvector"]
@@ -60,7 +62,8 @@ for i, container in enumerate(ax.containers):
 plt.ylim(0, df_means_trans.max().max() * 1.35)
 
 plt.tight_layout()
-png_file = csv_file.rsplit('.', 1)[0] + "_lineal_completo.png"
+csv_base = os.path.splitext(os.path.basename(csv_file))[0]
+png_file = os.path.join('graficos', f"{csv_base}_lineal_completo.png")
 plt.savefig(png_file, dpi=300)
 print(f"Grafico guardado exitosamente como: {png_file}")
 plt.show()

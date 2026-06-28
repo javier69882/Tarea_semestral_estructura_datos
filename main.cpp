@@ -5,6 +5,7 @@
 #include <vector>
 #include <fstream> 
 #include <cmath>   
+#include <filesystem>
 #include "Centrality.hpp"
 #ifdef _WIN32
 #include <windows.h>
@@ -356,6 +357,13 @@ static std::pair<double, double> runScalarExperiment(const std::string& metricNa
     return std::make_pair(mean, variance);
 }
 
+// se crea el directorio "csv" si no existe y se retorna la ruta completa del archivo
+static std::filesystem::path ensureCsvDirAndGetPath(const std::string& fileName) {
+    const std::filesystem::path csvDir("csv");
+    std::filesystem::create_directories(csvDir);
+    return csvDir / std::filesystem::path(fileName).filename();
+}
+
 int main(int argc, char* argv[]) {
     // Validar el argumento
     if (argc < 2) {
@@ -456,9 +464,12 @@ int main(int argc, char* argv[]) {
     // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
    else if (modo == "proteinas_test") {
        if (argc < 3) return 1;
+
+        const std::filesystem::path outputCentralidad = ensureCsvDirAndGetPath(argv[2]);
+        const std::filesystem::path outputMemoria = ensureCsvDirAndGetPath("memoria_prot.csv");
         
-        std::ofstream csvCentralidad(argv[2]);
-        std::ofstream csvMemoria("memoria_prot.csv");
+        std::ofstream csvCentralidad(outputCentralidad);
+        std::ofstream csvMemoria(outputMemoria);
         
         auto startConst = std::chrono::high_resolution_clock::now();
         GraphList grafoProteinas(false); 
@@ -503,8 +514,11 @@ int main(int argc, char* argv[]) {
     else if (modo == "trade_test") {
         if (argc < 3) return 1;
 
-        std::ofstream csvCentralidad(argv[2]);
-        std::ofstream csvMemoria("memoria_trade.csv"); 
+        const std::filesystem::path outputCentralidad = ensureCsvDirAndGetPath(argv[2]);
+        const std::filesystem::path outputMemoria = ensureCsvDirAndGetPath("memoria_trade.csv");
+
+        std::ofstream csvCentralidad(outputCentralidad);
+        std::ofstream csvMemoria(outputMemoria); 
         
         std::vector<std::string> archivosTrade = {"datasets/2000.net", "datasets/2005.net", "datasets/2010.net", "datasets/2015.net", "datasets/2018.net"};
         std::vector<GraphList> redesComerciales(archivosTrade.size(), GraphList(true));
@@ -554,10 +568,11 @@ int main(int argc, char* argv[]) {
     // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
     else if (modo == "perturbacion_proteinas") {
         std::cout << "--- INICIANDO MODO: PERTURBACION PROTEINAS ---\n";
+        const std::filesystem::path outputPerturbacion = ensureCsvDirAndGetPath("resultados_perturbacion_prot.csv");
         
-        std::ofstream csvPerturbacion("resultados_perturbacion_prot.csv");
+        std::ofstream csvPerturbacion(outputPerturbacion);
         if (!csvPerturbacion.is_open()) {
-            std::cerr << "Error: No se pudo crear resultados_perturbacion_prot.csv\n";
+            std::cerr << "Error: No se pudo crear " << outputPerturbacion << "\n";
             return 1;
         }
         
@@ -579,8 +594,9 @@ int main(int argc, char* argv[]) {
     // ESCENARIO 6: EXPERIMENTO DE PERTURBACION (TRADE MULTIPLE)
     else if (modo == "perturbacion_trade") {
         std::cout << "--- INICIANDO MODO: PERTURBACION TRADE (TODOS LOS AÑOS) ---\n";
+        const std::filesystem::path outputPerturbacion = ensureCsvDirAndGetPath("resultados_perturbacion_trade.csv");
         
-        std::ofstream csvPerturbacion("resultados_perturbacion_trade.csv");
+        std::ofstream csvPerturbacion(outputPerturbacion);
         if (!csvPerturbacion.is_open()) return 1;
         
         // ¡NUEVA CABECERA MÁS LIMPIA!
@@ -609,7 +625,8 @@ int main(int argc, char* argv[]) {
     // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
     else if (modo == "aumento_trade") {
         std::cout << "--- INICIANDO MODO: AUMENTO TRADE ---\n";
-        std::ofstream csvAumento("resultados_aumento_trade.csv");
+        const std::filesystem::path outputAumento = ensureCsvDirAndGetPath("resultados_aumento_trade.csv");
+        std::ofstream csvAumento(outputAumento);
         if (!csvAumento.is_open()) return 1;
         
         csvAumento << "Dataset,Estado,Arista,Deg_Val,Bet_Val,Clo_Val,PR_Val,ASP_Val,Dia_Val,Eig_Val\n";
@@ -637,10 +654,11 @@ int main(int argc, char* argv[]) {
     // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
     else if (modo == "aumento_proteinas") {
         std::cout << "--- INICIANDO MODO: AUMENTO PROTEINAS ---\n";
+        const std::filesystem::path outputAumento = ensureCsvDirAndGetPath("resultados_aumento_prot.csv");
         
-        std::ofstream csvAumento("resultados_aumento_prot.csv");
+        std::ofstream csvAumento(outputAumento);
         if (!csvAumento.is_open()) {
-            std::cerr << "Error: No se pudo crear resultados_aumento_prot.csv\n";
+            std::cerr << "Error: No se pudo crear " << outputAumento << "\n";
             return 1;
         }
         

@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
+import os
 
 if len(sys.argv) < 2:
     print("Error: Falta el archivo CSV.")
@@ -11,6 +12,7 @@ archivo_csv = sys.argv[1]
 
 try:
     df = pd.read_csv(archivo_csv)
+    os.makedirs('graficos', exist_ok=True)
     
     if df['Dataset'].dtype == object:
         df['Dataset'] = df['Dataset'].str.replace('datasets/', '').str.replace('.net', '')
@@ -99,7 +101,7 @@ try:
 
     plt.tight_layout()
     
-    nombre_archivo = 'panel_perturbacion_numeros.png'
+    nombre_archivo = os.path.join('graficos', 'panel_perturbacion_numeros.png')
     plt.savefig(nombre_archivo, dpi=300, bbox_inches='tight')
     print(f"\n-> ¡Listo! El panel final arreglado fue guardado como '{nombre_archivo}'")
 
