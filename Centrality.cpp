@@ -13,8 +13,11 @@
 #include <chrono> 
 #include <algorithm> 
 
-/*  
-en Betweenness Centrality, Network Diameter,Closeness y Average Shortest Path, pusimos peso=1/peso porque en el dijsktra, si el peso es mayor, la distancia es menor, porque en realidad el de trade no mira distancias sino que movimiento de dinero, y . Por lo tanto, para que un peso mayor signifique una distancia menor, usamos 1/peso. Esto asegura que los caminos con pesos más altos se consideren más cortos en el cálculo de la centralidad y otras métricas relacionadas con la distancia.
+/* Nota de Diseño General:
+En las métricas basadas en caminos mínimos (Betweenness, Closeness, Average Shortest Path y Network Diameter), 
+se implementó una transformación de pesos usando (1 / peso) al ejecutar Dijkstra. 
+Justificación: En datasets como Trade, el peso representa volumen (fuerza o similitud). Para que un volumen 
+mayor represente una "distancia" menor (mayor cercanía) en el algoritmo de caminos mínimos, el peso debe invertirse. 
 */
 
 // 1. Degree Centrality
@@ -34,13 +37,13 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateDegr
     double maxConexiones = static_cast<double>(vertexCount - 1);
 
     if (!isDirected) {
-        //  Grafo No Dirigido
+        //  Caso de un grafo No Dirigido
         for (int i = 0; i < vertexCount; ++i) {
             double grado = static_cast<double>(g.getNeighbors(i).size()); 
             degreeScores[i] = grado / maxConexiones; 
         }
     } else {
-        //  Grafo Dirigido (In-degree y Out-degree)
+        //  Caso de un grafo dirigido (In-degree y Out-degree)
         std::vector<int> inDegree(vertexCount, 0);
         std::vector<int> outDegree(vertexCount, 0);
 
@@ -54,8 +57,10 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateDegr
             }
         }
 
-        // En un grafo dirigido, el máximo teórico de conexiones 
-        // (entrantes + salientes) para un solo nodo es 2 * (V - 1)
+        /* En un grafo dirigido, el máximo teórico de conexiones 
+        (entrantes + salientes) para un solo nodo es 2 * (V - 1)
+        */
+
         double maxConexionesDirigido = maxConexiones * 2.0;
 
         for (int i = 0; i < vertexCount; ++i) {
@@ -64,13 +69,13 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateDegr
         }
     }
 
-    // --- BLOQUE DE ORDENAMIENTO ESTANDARIZADO ---
+    // Aquí convertimos el unordered_map a un vector de pares para poder ordenarlo
     for (const auto& par : degreeScores) {
         rankingFinal.emplace_back(par.first, par.second); 
     }
 
     std::sort(rankingFinal.begin(), rankingFinal.end(), [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
-        return a.second > b.second; // Orden descendente
+        return a.second > b.second; // Consideramos un orden descendente
     });
 
     auto end = std::chrono::high_resolution_clock::now();
@@ -79,12 +84,13 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateDegr
     return std::make_pair(rankingFinal, duracion.count());
 }
 
-// 2. Betweenness Centrality
-// El siguiente bloque implementa el Algoritmo de Brandes para la centralidad de intermediación.
-// La estructura de estructuras de datos (uso de P, sigma, d, delta y S) fue adaptada a partir 
-// de la lógica fundacional descrita en "A Faster Algorithm for Betweenness Centrality" (Brandes, 2001)
-// y guiada por las convenciones de la Boost Graph Library (BGL) para C++.
-// 2. Betweenness Centrality
+/* 2. Betweenness Centrality
+    El siguiente bloque implementa el Algoritmo de Brandes para la centralidad de intermediación.
+    La estructura de estructuras de datos (uso de P, sigma, d, delta y S) fue adaptada a partir de la lógica fundacional
+    descrita en "A Faster Algorithm for Betweenness Centrality" (Brandes, 2001) y guiada por las convenciones de la 
+    Boost Graph Library (BGL) para C++.
+*/
+
 std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateBetweennessCentrality(const Graph& g, bool isDirected) {
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -92,7 +98,7 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateBetw
     std::vector<std::pair<int, double>> rankingFinal;
     if (n <= 1) return std::make_pair(rankingFinal, 0.0);
 
-    // Detección de grafo ponderado 
+    // Aquí verificamos si el grafo es ponderado o no, para luego decidir si usar BFS o Dijkstra
     const GraphList* listGraph = dynamic_cast<const GraphList*>(&g);
     const bool hasAdjacencyListFastPath = (listGraph != nullptr);
     bool isUnweightedGraph = true;
@@ -131,9 +137,9 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateBetw
         std::vector<double> sigma(n, 0.0);
         sigma[s] = 1.0;
         
-        // Fase 1: Encontrar caminos más cortos
+        // Etapa 1: Encontramos los caminos más cortos
         if (isUnweightedGraph) {
-            //  BFS O(V + E) - Para grafos sin pesos
+            //  BFS O(V + E) - Lo consideramos para grafos sin pesos
             std::vector<int> d(n, -1);
             d[s] = 0;
             std::queue<int> Q;
@@ -156,7 +162,7 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateBetw
                 }
             }
         } else {
-            // DIJKSTRA O(V E + V^2 log V) - Para grafos con pesos
+            // DIJKSTRA O(V E + V^2 log V) - Consideramos para grafos con pesos
             std::vector<double> d(n, infinity);
             d[s] = 0.0;
             using QueueEntry = std::pair<double, int>;
@@ -192,7 +198,7 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateBetw
             }
         }
 
-        // Fase 2: Acumulación hacia atrás (Brandes Backward Propagation)
+        // Etapa 2: Acumulación hacia atrás (Brandes Backward Propagation)
         std::vector<double> delta(n, 0.0);
         while (!S.empty()) {
             int w = S.top();
@@ -208,13 +214,13 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateBetw
         }
     }
 
-    // Fase 3: Normalización matemática
+    // Etapa 3: Normalización los datos matemáticamente según la fórmula de Brandes
     double divisorNormalizacion = static_cast<double>((n - 1) * (n - 2)); 
     
     for (const auto& par : cb) {
         double valorCentralidad = par.second;
         
-        //  Solo dividimos por 2 si NO es dirigido
+        //  Dividimos por 2 solo si NO es dirigido porque cada camino se cuenta dos veces en grafos no dirigidos
         if (!isDirected) {
             valorCentralidad = valorCentralidad / 2.0; 
         }
@@ -236,7 +242,8 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateBetw
     return std::make_pair(rankingFinal, duracion.count());
 }
 
-// 3. Closeness Centrality
+// 3. Closeness Centrality. 
+// Referencia: Wasserman & Faust (1994). Factor de corrección para componentes desconectados.
 std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClosenessCentrality(const Graph& g) {
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -257,8 +264,8 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClos
     const double unitWeight = 1.0;
     const double epsilon = 1e-9;
     
-    // Verificacion de grafo ponderado o no
-    if (hasAdjacencyListFastPath) {
+    // Verificamos si el grafo es ponderado o no
+    if (hasAdjacencyListFastPath) { //Si está ponderado, iteramos sobre la lista de adyacencia para verificar los pesos
         for (int u = 0; u < vertexCount && isUnweightedGraph; ++u) {
             for (const auto& edge : listGraph->getAdjacencyListRef(u)) {
                 if (edge.second <= 0.0 || std::fabs(edge.second - unitWeight) > epsilon) {
@@ -267,7 +274,7 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClos
                 }
             }
         }
-    } else {
+    } else { // Si no está ponderado, iteramos sobre los vecinos para verificar los pesos
         for (int u = 0; u < vertexCount && isUnweightedGraph; ++u) {
             for (int v : g.getNeighbors(u)) {
                 const double edgeWeight = g.getWeight(u, v);
@@ -280,9 +287,9 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClos
     }
 
     const double infinity = std::numeric_limits<double>::infinity();
-    const double N_minus_1 = static_cast<double>(vertexCount - 1); // NUEVO: N-1 precalculado
+    const double N_minus_1 = static_cast<double>(vertexCount - 1); // N-1 precalculado para la normalización de Wasserman y Faust
 
-    // CASO 1: BFS para Grafos No Ponderados
+    // Caso 1: BFS considerando Grafos No Ponderados
     if (isUnweightedGraph) {
         if (hasAdjacencyListFastPath) {
             std::vector<int> distances(vertexCount, 0);
@@ -301,7 +308,7 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClos
                 frontier.push(source);
 
                 double sumDistances = 0.0;
-                int reachableOtherNodes = 0; // NUEVO: Cuenta (n - 1)
+                int reachableOtherNodes = 0; // Cuenta (n - 1) para la fórmula de Wasserman y Faust
 
                 while (!frontier.empty()) {
                     const int currentVertex = frontier.front();
@@ -318,17 +325,17 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClos
                         frontier.push(neighbor);
 
                         sumDistances += static_cast<double>(distances[neighbor]);
-                        reachableOtherNodes++; // NUEVO: Nodo alcanzado
+                        reachableOtherNodes++; // Nodo alcanzado
                     }
                 }
                 ++traversalTag;
 
-                // NUEVO: Formula de Wasserman y Faust
-                if (sumDistances > 0.0) {
+                // Fórmula de Wasserman y Faust
+                if (sumDistances > 0.0) { // Evitamos división por cero
                     double n_minus_1 = static_cast<double>(reachableOtherNodes);
                     closenessScores[source] = (n_minus_1 / N_minus_1) * (n_minus_1 / sumDistances);
                 } else {
-                    closenessScores[source] = 0.0; // Nodo aislado
+                    closenessScores[source] = 0.0; // Nodo aislado, no tiene vecinos alcanzables
                 }
             }
         } else {
@@ -340,7 +347,7 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClos
                 frontier.push(source);
 
                 double sumDistances = 0.0;
-                int reachableOtherNodes = 0; // NUEVO: Cuenta (n - 1)
+                int reachableOtherNodes = 0; // Cuenta (n - 1) para la fórmula de Wasserman y Faust
 
                 while (!frontier.empty()) {
                     const int currentVertex = frontier.front();
@@ -352,11 +359,11 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClos
                         distances[neighbor] = distances[currentVertex] + 1.0;
                         frontier.push(neighbor);
                         sumDistances += distances[neighbor];
-                        reachableOtherNodes++; // NUEVO: Nodo alcanzado
+                        reachableOtherNodes++; // Cuenta (n - 1) para la fórmula de Wasserman y Faust
                     }
                 }
 
-                // NUEVO: Formula de Wasserman y Faust
+                // Fórmula de Wasserman y Faust
                 if (sumDistances > 0.0) {
                     double n_minus_1 = static_cast<double>(reachableOtherNodes);
                     closenessScores[source] = (n_minus_1 / N_minus_1) * (n_minus_1 / sumDistances);
@@ -367,7 +374,7 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClos
         }
     } 
   
-    // CASO 2: Dijkstra para Grafos Ponderados
+    // Caso 2: Dijkstra considerando Grafos Ponderados
     else {
         for (int source = 0; source < vertexCount; ++source) {
             std::vector<double> distances(vertexCount, infinity);
@@ -376,20 +383,20 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClos
             using QueueEntry = std::pair<double, int>;
             std::priority_queue<QueueEntry, std::vector<QueueEntry>, std::greater<QueueEntry>> frontier;
             frontier.push({0.0, source});
-
+            
+            // Ejecutamos Dijkstra para encontrar las distancias más cortas desde el nodo fuente
             while (!frontier.empty()) {
                 const auto [currentDistance, currentVertex] = frontier.top();
                 frontier.pop();
 
                 if (currentDistance > distances[currentVertex]) continue;
 
-                if (hasAdjacencyListFastPath) {
+                if (hasAdjacencyListFastPath) { // Optimización para grafos con lista de adyacencia
                     for (const auto& edge : listGraph->getAdjacencyListRef(currentVertex)) {
                         const int neighbor = edge.first;
                         const double Weight = edge.second;
                         if (Weight <= 0.0) continue;
                            const double edgeWeight = 1/Weight; 
-
 
                         const double candidateDistance = currentDistance + edgeWeight;
                         if (candidateDistance < distances[neighbor]) {
@@ -397,14 +404,15 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClos
                             frontier.push({candidateDistance, neighbor});
                         }
                     }
-                } else {
+                } else {    // Optimización para grafos generales / matrices
                     for (int neighbor : g.getNeighbors(currentVertex)) {
                         const double Weight = g.getWeight(currentVertex, neighbor);
                         if (Weight <= 0.0) continue;
-                        const double edgeWeight = 1 / Weight;
 
+                        const double edgeWeight = 1 / Weight;
                         const double candidateDistance = currentDistance + edgeWeight;
-                        if (candidateDistance < distances[neighbor]) {
+
+                        if (candidateDistance < distances[neighbor]) {  // Si encontramos un camino más corto, actualizamos la distancia y agregamos a la cola
                             distances[neighbor] = candidateDistance;
                             frontier.push({candidateDistance, neighbor});
                         }
@@ -433,7 +441,7 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateClos
         }
     }
 
-    // PASAR A VECTOR Y ORDENAR
+    // Vectorizamos los resultados finales del mapa al vector de salida
     for (const auto& par : closenessScores) {
         rankingFinal.push_back(par);
     }
@@ -459,14 +467,14 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculatePage
     std::vector<std::pair<int, double>> rankingVacio;
     if (N == 0) return std::make_pair(rankingVacio, 0.0);
 
-    // Uso de variabbles temporales para el proceso iterativo
+    // Uso de variables temporales para el proceso iterativo
     std::unordered_map<int, double> PR_old;
     std::unordered_map<int, double> PR_new;
 
     std::vector<std::vector<int>> inEdges(N);
     std::vector<int> outDegree(N, 0);
 
-    // Inicialización
+    // Inicializamos PageRank y preparamos las estructuras de datos para el cálculo
     for (int i = 0; i < N; ++i) {
         PR_old[i] = 1.0 / N; 
         PR_new[i] = 0.0;
@@ -477,13 +485,13 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculatePage
         }
     }
 
-    // Proceso Iterativo
+    // Proceso Iterativo, donde se actualizan los valores de PageRank hasta converger o alcanzar el máximo de iteraciones
     for (int iter = 0; iter < maxIterations; ++iter) {
         double diff = 0.0; 
 
-        for (int u = 0; u < N; ++u) {
+        for (int u = 0; u < N; ++u) { // Calculamos el nuevo PageRank para cada nodo basado en los nodos que apuntan a él
             double sumatoria = 0.0;
-            for (int v : inEdges[u]) {
+            for (int v : inEdges[u]) {  // Para cada nodo que apunta a 'u', sumamos su contribución al PageRank de 'u'
                 sumatoria += PR_old[v] / outDegree[v];
             }
             PR_new[u] = ((1.0 - dampingFactor) / N) + (dampingFactor * sumatoria);
@@ -491,16 +499,14 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculatePage
         }
 
         PR_old = PR_new;
-        if (diff < tolerance) break; 
+        if (diff < tolerance) break; // Si la diferencia total es menor que la tolerancia, consideramos que hemos convergido
     }
 
   
-    //PASAR A VECTOR Y ORDENAR 
-   
-    //Copiamos los resultados finales del mapa al vector de salida
+    // Vectorizamos los resultados finales del mapa al vector de salida
     std::vector<std::pair<int, double>> rankingFinal(PR_old.begin(), PR_old.end());
 
-    //Ordenamos el vector de mayor a menor puntaje usando sort de Stl, indicando que compare el segundo elemento del par (el puntaje) para ordenar
+    // Ordenamos el vector de mayor a menor puntaje usando sort de Stl, indicando que compare el segundo elemento del par (el puntaje) para ordenar
     std::sort(rankingFinal.begin(), rankingFinal.end(), [](const std::pair<int, double>& a, const std::pair<int, double>& b) {
         return a.second > b.second; 
     });
@@ -514,8 +520,10 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculatePage
 
 
 // 5. Average Shortest Path
+// Ref: Watts, D. J., & Strogatz, S. H. (1998). "Collective dynamics of 'small-world' networks".
 double Centrality::calculateAverageShortestPath(const Graph& g) {
 	const int vertexCount = g.getNumVertices();
+    
 	if (vertexCount <= 1) {
 		return 0.0;
 	}
@@ -527,7 +535,7 @@ double Centrality::calculateAverageShortestPath(const Graph& g) {
 	const double unitWeight = 1.0;
 	const double epsilon = 1e-9;
     
-    // Verificacion de grafo ponderado o no
+    // Verificamos si el grafo es ponderado o no
 	if (hasAdjacencyListFastPath) {
 		for (int u = 0; u < vertexCount && isUnweightedGraph; ++u) {
 			for (const auto& edge : listGraph->getAdjacencyListRef(u)) {
@@ -538,7 +546,7 @@ double Centrality::calculateAverageShortestPath(const Graph& g) {
 			}
 		}
 	} 
-    else {
+    else {  // Si no está ponderado, iteramos sobre los vecinos para verificar los pesos
 		for (int u = 0; u < vertexCount && isUnweightedGraph; ++u) {
 			for (int v : g.getNeighbors(u)) {
 				const double edgeWeight = g.getWeight(u, v);
@@ -554,7 +562,7 @@ double Centrality::calculateAverageShortestPath(const Graph& g) {
 	double totalDistance = 0.0;
 	std::size_t reachablePairs = 0;
 
-    // Se usa BFS en este caso
+    // En caso de grafo no ponderado, usamos BFS para calcular las distancias más cortas
 	if (isUnweightedGraph) {
 		if (hasAdjacencyListFastPath) {
 			std::vector<int> distances(vertexCount, 0);
@@ -620,7 +628,7 @@ double Centrality::calculateAverageShortestPath(const Graph& g) {
 			}
 		}
 	} 
-    // Se usa Dijkstra en este caso
+    // En caso de grafo ponderado, usamos Dijkstra para calcular las distancias más cortas
     else {
 		for (int source = 0; source < vertexCount; ++source) {
 			std::vector<double> distances(vertexCount, infinity);
@@ -730,7 +738,7 @@ double Centrality::calculateNetworkDiameter(const Graph& g) {
     const double infinity = std::numeric_limits<double>::infinity();
     double globalDiameter = 0.0; // Aquí guardaremos la distancia máxima encontrada
 
-    // CASO 1: BFS para Grafos No Ponderados
+    // Caso 1: BFS para Grafos No Ponderados
     if (isUnweightedGraph) {
         if (hasAdjacencyListFastPath) {
             std::vector<int> distances(vertexCount, 0);
@@ -797,7 +805,7 @@ double Centrality::calculateNetworkDiameter(const Graph& g) {
             }
         }
     } 
-    // CASO 2: Dijkstra para Grafos Ponderados
+    // Caso 2: Dijkstra para Grafos Ponderados
     else {
         for (int source = 0; source < vertexCount; ++source) {
             std::vector<double> distances(vertexCount, infinity);
@@ -935,6 +943,6 @@ std::pair<std::vector<std::pair<int, double>>, double> Centrality::calculateEige
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> duracion = end - start;
-
+    // Retornamos el vector ya ordenado y el tiempo
     return std::make_pair(rankingFinal, duracion.count());
 }

@@ -1,6 +1,2 @@
 Dataset,Nodos,Aristas,Memoria_KB,TiempoConstruccion_ms
-<<<<<<< HEAD:memoria_prot.csv
-yeast.edgelist,6526,1060990,16731,430.177
-=======
 yeast.edgelist,6526,1060990,16731,143.52
->>>>>>> experimento:csv/memoria_prot.csv
