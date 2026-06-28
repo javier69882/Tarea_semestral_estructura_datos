@@ -7,33 +7,63 @@
 #include <cmath>     
 #include <algorithm>
 
-void Experimento::evaluarImpactoGlobal(const Graph& g, const std::string& nombreDataset, const std::string& estado, const std::string& arista, std::ofstream& csv) {
+// Se añade el parámetro 'const MapeoGrafo& traductor'
+void Experimento::evaluarImpactoGlobal(const Graph& g, const std::string& nombreDataset, const std::string& estado, const std::string& arista, std::ofstream& csv, const MapeoGrafo& traductor) {
     bool isDirected = (nombreDataset.find("net") != std::string::npos);
-    int elemento = 0; 
+    int elemento = 0; // Posición TOP 1
 
+    // DEGREE
     auto resDeg = Centrality::calculateDegreeCentrality(g, isDirected);
-    double deg = (resDeg.first.size() > elemento) ? resDeg.first[elemento].second : 0.0;
-                
+    double deg = 0.0; std::string topDeg = "N/A";
+    if (resDeg.first.size() > elemento) {
+        deg = resDeg.first[elemento].second;
+        topDeg = traductor.id_a_nombre.at(resDeg.first[elemento].first);
+    }
 
+    // BETWEENNESS
     auto resBet = Centrality::calculateBetweennessCentrality(g);
-    double bet = (resBet.first.size() > elemento) ? resBet.first[elemento].second : 0.0;
+    double bet = 0.0; std::string topBet = "N/A";
+    if (resBet.first.size() > elemento) {
+        bet = resBet.first[elemento].second;
+        topBet = traductor.id_a_nombre.at(resBet.first[elemento].first);
+    }
 
+    // CLOSENESS
     auto resClo = Centrality::calculateClosenessCentrality(g);
-    double clo = (resClo.first.size() > elemento) ? resClo.first[elemento].second : 0.0;
+    double clo = 0.0; std::string topClo = "N/A";
+    if (resClo.first.size() > elemento) {
+        clo = resClo.first[elemento].second;
+        topClo = traductor.id_a_nombre.at(resClo.first[elemento].first);
+    }
 
+    // PAGERANK
     auto resPr = Centrality::calculatePageRank(g);
-    double pr = (resPr.first.size() > elemento) ? resPr.first[elemento].second : 0.0;
+    double pr = 0.0; std::string topPr = "N/A";
+    if (resPr.first.size() > elemento) {
+        pr = resPr.first[elemento].second;
+        topPr = traductor.id_a_nombre.at(resPr.first[elemento].first);
+    }
 
+    // EIGENVECTOR
     auto resEig = Centrality::calculateEigenvectorCentrality(g);
-    double eig = (resEig.first.size() > elemento) ? resEig.first[elemento].second : 0.0;
+    double eig = 0.0; std::string topEig = "N/A";
+    if (resEig.first.size() > elemento) {
+        eig = resEig.first[elemento].second;
+        topEig = traductor.id_a_nombre.at(resEig.first[elemento].first);
+    }
 
+    // MÉTRICAS GLOBALES (No tienen un "Top")
     double asp = Centrality::calculateAverageShortestPath(g);
     double dia = Centrality::calculateNetworkDiameter(g);
 
-    // Se escribe la arista en la nueva columna
+    // Escribimos los valores y los nodos Top 1 correspondientes
     csv << nombreDataset << "," << estado << "," << arista << ","
-        << deg << "," << bet << "," << clo << ","
-        << pr << "," << asp << "," << dia << "," << eig << "\n";
+        << deg << "," << topDeg << ","
+        << bet << "," << topBet << ","
+        << clo << "," << topClo << ","
+        << pr << "," << topPr << ","
+        << asp << "," << dia << "," 
+        << eig << "," << topEig << "\n";
 }
 
 void Experimento::ejecutarPerturbacion(Graph& g, const std::string& nombreDataset, std::ofstream& csv, const MapeoGrafo& traductor) {
@@ -42,8 +72,8 @@ void Experimento::ejecutarPerturbacion(Graph& g, const std::string& nombreDatase
     std::cout << "\n========================================\n";
 
     std::cout << "-> Evaluando GRAFO ORIGINAL..." << std::endl;
-    // Para el original, la arista es "Ninguna"
-    evaluarImpactoGlobal(g, nombreDataset, "Original", "Ninguna", csv);
+    // Añadimos 'traductor' al final
+    evaluarImpactoGlobal(g, nombreDataset, "Original", "Ninguna", csv, traductor);
     
     bool isDirected = (nombreDataset.find("net") != std::string::npos);
     auto rankingBetweenness = Centrality::calculateBetweennessCentrality(g).first;
@@ -63,7 +93,7 @@ void Experimento::ejecutarPerturbacion(Graph& g, const std::string& nombreDatase
         
         std::cout << "[-] LUGAR 1 (HUB): Desconectando " << aristaStr << std::endl;
         g.removeEdge(nodoHub, vecino);
-        evaluarImpactoGlobal(g, nombreDataset, "Perturbado_Hub", aristaStr, csv);
+        evaluarImpactoGlobal(g, nombreDataset, "Perturbado_Hub", aristaStr, csv, traductor);
         g.addEdge(nodoHub, vecino, pesoOrig);
     }
 
@@ -83,22 +113,20 @@ void Experimento::ejecutarPerturbacion(Graph& g, const std::string& nombreDatase
 
         std::cout << "[-] LUGAR 2 (PERIFERIA): Desconectando " << aristaStr << std::endl;
         g.removeEdge(nodoPeriferia, vecino);
-        evaluarImpactoGlobal(g, nombreDataset, "Perturbado_Periferia", aristaStr, csv);
+        evaluarImpactoGlobal(g, nombreDataset, "Perturbado_Periferia", aristaStr, csv, traductor);
         g.addEdge(nodoPeriferia, vecino, pesoOrig);
     }
 
     // LUGAR 3: MEDIO
-    
     int nodoMedio = -1;
     std::vector<int> vecinosMedio;
     
-    // Empezamos a buscar desde la mitad del ranking hacia arriba
     int indexMitad = rankingBetweenness.size() / 2;
     for (size_t i = indexMitad; i < rankingBetweenness.size(); ++i) {
         vecinosMedio = g.getNeighbors(rankingBetweenness[i].first);
         if (!vecinosMedio.empty()) {
             nodoMedio = rankingBetweenness[i].first;
-            break; // Encontramos al primer "nodo medio" que sí tiene a quién exportar
+            break; 
         }
     }
 
@@ -111,34 +139,29 @@ void Experimento::ejecutarPerturbacion(Graph& g, const std::string& nombreDatase
 
         std::cout << "[-] LUGAR 3 (MEDIO): Desconectando " << aristaStr << std::endl;
         g.removeEdge(nodoMedio, vecino);
-        evaluarImpactoGlobal(g, nombreDataset, "Perturbado_Medio", aristaStr, csv);
+        evaluarImpactoGlobal(g, nombreDataset, "Perturbado_Medio", aristaStr, csv, traductor);
         g.addEdge(nodoMedio, vecino, pesoOrig);
     } else {
         std::cout << "[-] LUGAR 3 (MEDIO): Ningun nodo desde la mitad hacia abajo tiene vecinos." << std::endl;
     }
 }
 
-
 void Experimento::ejecutarAumento(Graph& g, const std::string& nombreDataset, std::ofstream& csv, const MapeoGrafo& traductor) {
     std::cout << "\n========================================";
     std::cout << "\n INICIANDO AUMENTO DE ARISTAS: " << nombreDataset;
     std::cout << "\n========================================\n";
 
-    // --------------------------------------------------------------------
-    // DETECCIÓN DE GRAFO PONDERADO Y CÁLCULO DEL PERCENTIL 75
-    // --------------------------------------------------------------------
+    // PONDERADO / PERCENTIL 75
     std::vector<double> todosLosPesos;
     bool esPonderado = false;
     const double epsilon = 1e-6;
     const int vertexCount = g.getNumVertices();
 
-    // Recolectamos todos los pesos válidos de la red
     for (int u = 0; u < vertexCount; ++u) {
         for (int v : g.getNeighbors(u)) {
             double peso = g.getWeight(u, v);
             if (peso > 0.0) {
                 todosLosPesos.push_back(peso);
-                // Si encontramos un peso que no sea 1.0, el grafo es ponderado
                 if (std::fabs(peso - 1.0) > epsilon) {
                     esPonderado = true;
                 }
@@ -146,13 +169,9 @@ void Experimento::ejecutarAumento(Graph& g, const std::string& nombreDataset, st
         }
     }
 
-    // Determinamos el peso que usaremos para las nuevas aristas
     double pesoAAgregar = 1.0; 
     if (esPonderado && !todosLosPesos.empty()) {
-        // Ordenamos los pesos de menor a mayor para calcular el percentil
         std::sort(todosLosPesos.begin(), todosLosPesos.end());
-        
-        // Posición del percentil 50 usando el método de rango más cercano
         size_t idxP50 = static_cast<size_t>(0.50 * (todosLosPesos.size() - 1));
         pesoAAgregar = todosLosPesos[idxP50];
         
@@ -162,11 +181,8 @@ void Experimento::ejecutarAumento(Graph& g, const std::string& nombreDataset, st
         std::cout << "-> [NO PONDERADO] Detectado o sin aristas. Usando peso estandar: 1.0" << std::endl;
     }
 
-    // --------------------------------------------------------------------
-    // EVALUACIÓN DEL GRAFO ORIGINAL
-    // --------------------------------------------------------------------
     std::cout << "-> Evaluando GRAFO ORIGINAL..." << std::endl;
-    evaluarImpactoGlobal(g, nombreDataset, "Original", "Ninguna", csv);
+    evaluarImpactoGlobal(g, nombreDataset, "Original", "Ninguna", csv, traductor);
     
     bool isDirected = (nombreDataset.find("net") != std::string::npos);
     auto rankingBetweenness = Centrality::calculateBetweennessCentrality(g).first;
@@ -174,7 +190,6 @@ void Experimento::ejecutarAumento(Graph& g, const std::string& nombreDataset, st
 
     if (rankingBetweenness.empty() || rankingDegree.empty()) return;
 
-    // Helper interno para saber si dos nodos ya están conectados
     auto sonVecinos = [&](int u, int v) {
         std::vector<int> vecinos = g.getNeighbors(u);
         for (int vec : vecinos) {
@@ -183,9 +198,7 @@ void Experimento::ejecutarAumento(Graph& g, const std::string& nombreDataset, st
         return false;
     };
 
-    // ====================================================================
-    // LUGAR 1: HUB-HUB (Conectar los dos nodos más vitales)
-    // ====================================================================
+    // LUGAR 1: HUB-HUB
     int hub1 = rankingBetweenness[0].first;
     int hub2 = -1;
     for (size_t i = 1; i < rankingBetweenness.size(); ++i) {
@@ -205,14 +218,12 @@ void Experimento::ejecutarAumento(Graph& g, const std::string& nombreDataset, st
         std::string aristaStr = n1 + "+" + n2;
         
         std::cout << "[+] LUGAR 1 (HUB-HUB): Añadiendo arista entre " << aristaStr << " con peso " << pesoAAgregar << std::endl;
-        g.addEdge(hub1, hub2, pesoAAgregar); // <--- USAMOS EL PESO DINÁMICO
-        evaluarImpactoGlobal(g, nombreDataset, "Aumento_Hub_Hub", aristaStr, csv);
+        g.addEdge(hub1, hub2, pesoAAgregar);
+        evaluarImpactoGlobal(g, nombreDataset, "Aumento_Hub_Hub", aristaStr, csv, traductor);
         g.removeEdge(hub1, hub2); 
     }
 
-    // ====================================================================
-    // LUGAR 2: HUB-PERIFERIA (Atajo directo al nodo más aislado)
-    // ====================================================================
+    // LUGAR 2: HUB-PERIFERIA
     int peri1 = -1;
     for (auto it = rankingDegree.rbegin(); it != rankingDegree.rend(); ++it) {
         if (!sonVecinos(hub1, it->first) && hub1 != it->first) {
@@ -231,14 +242,12 @@ void Experimento::ejecutarAumento(Graph& g, const std::string& nombreDataset, st
         std::string aristaStr = n1 + "+" + n2;
 
         std::cout << "[+] LUGAR 2 (HUB-PERIFERIA): Añadiendo atajo entre " << aristaStr << " con peso " << pesoAAgregar << std::endl;
-        g.addEdge(hub1, peri1, pesoAAgregar); // <--- USAMOS EL PESO DINÁMICO
-        evaluarImpactoGlobal(g, nombreDataset, "Aumento_Hub_Peri", aristaStr, csv);
+        g.addEdge(hub1, peri1, pesoAAgregar);
+        evaluarImpactoGlobal(g, nombreDataset, "Aumento_Hub_Peri", aristaStr, csv, traductor);
         g.removeEdge(hub1, peri1);
     }
 
-    // ====================================================================
-    // LUGAR 3: PERIFERIA-PERIFERIA (Unir a dos aislados)
-    // ====================================================================
+    // LUGAR 3: PERIFERIA-PERIFERIA
     int p1 = -1, p2 = -1;
     for (auto it1 = rankingDegree.rbegin(); it1 != rankingDegree.rend(); ++it1) {
         for (auto it2 = std::next(it1); it2 != rankingDegree.rend(); ++it2) {
@@ -257,8 +266,8 @@ void Experimento::ejecutarAumento(Graph& g, const std::string& nombreDataset, st
         std::string aristaStr = n1 + "+" + n2;
 
         std::cout << "[+] LUGAR 3 (PERI-PERI): Añadiendo arista entre " << aristaStr << " con peso " << pesoAAgregar << std::endl;
-        g.addEdge(p1, p2, pesoAAgregar); // <--- USAMOS EL PESO DINÁMICO
-        evaluarImpactoGlobal(g, nombreDataset, "Aumento_Peri_Peri", aristaStr, csv);
+        g.addEdge(p1, p2, pesoAAgregar);
+        evaluarImpactoGlobal(g, nombreDataset, "Aumento_Peri_Peri", aristaStr, csv, traductor);
         g.removeEdge(p1, p2);
     }
 }
