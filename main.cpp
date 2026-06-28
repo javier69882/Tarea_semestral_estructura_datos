@@ -55,6 +55,27 @@
 
 
 
+/*
+Experimentos de añadir o borrar aristas
+g++ -O3 main.cpp Graph.cpp parser_proteinas.cpp parser_trade.cpp Centrality.cpp Experimento.cpp -o proyecto_grafos
+
+quitan aristas
+./proyecto_grafos perturbacion_trade
+./proyecto_grafos perturbacion_proteinas
+
+aumentan aristas
+./proyecto_grafos aumento_trade
+./proyecto_grafos aumento_proteinas
+
+graficos de perturbacion
+python3 plot_perturbacion.py resultados_perturbacion_trade.csv
+python3 plot_perturbacion.py resultados_perturbacion_prot.csv
+python3 plot_perturbacion.py resultados_aumento_trade.csv
+python3 plot_perturbacion.py resultados_aumento_prot.csv
+
+    */
+
+
 
 // oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 //CALCULO DE MEMORIA DEL ADT 
@@ -176,10 +197,10 @@ static void printClosenessCentralityBenchmark(const Graph& graph, const MapeoGra
     std::cout << "\n--- Closeness Centrality: " << datasetLabel << " ---\n";
     std::cout << "Closeness calculado en " << tiempoMs << " ms.\n";
     std::cout << "Tiempo total del benchmark: " << elapsedMs << " ms\n";
-    std::cout << "--- TOP 5 " << topLabel << " ---\n";
+    std::cout << "--- TOP 100 " << topLabel << " ---\n";
 
     std::cout << std::fixed << std::setprecision(6);
-    for (int i = 0; i < 5 && i < static_cast<int>(topNodos.size()); i++) {
+    for (int i = 0; i < 100 && i < static_cast<int>(topNodos.size()); i++) {
         const int idNodo = topNodos[i].first;
         const double puntaje = topNodos[i].second;
 
@@ -528,14 +549,19 @@ int main(int argc, char* argv[]) {
     }
     }
     
-// ESCENARIO 5: EXPERIMENTO DE PERTURBACION (PROTEINAS)
+// OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+    // ESCENARIO 5: EXPERIMENTO DE PERTURBACION (PROTEINAS)
+    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
     else if (modo == "perturbacion_proteinas") {
         std::cout << "--- INICIANDO MODO: PERTURBACION PROTEINAS ---\n";
         
         std::ofstream csvPerturbacion("resultados_perturbacion_prot.csv");
-        if (!csvPerturbacion.is_open()) return 1;
+        if (!csvPerturbacion.is_open()) {
+            std::cerr << "Error: No se pudo crear resultados_perturbacion_prot.csv\n";
+            return 1;
+        }
         
-        // ¡NUEVA CABECERA MÁS LIMPIA!
+        // Cabecera exacta que necesita el script de Python
         csvPerturbacion << "Dataset,Estado,Arista,Deg_Val,Bet_Val,Clo_Val,PR_Val,ASP_Val,Dia_Val,Eig_Val\n";
 
         GraphList grafoProteinas(false); 
@@ -543,6 +569,7 @@ int main(int argc, char* argv[]) {
         MapeoGrafo traductor = cargarEdgeList(rutaDataset, grafoProteinas);
 
         if (grafoProteinas.getNumVertices() > 0) {
+            // Ejecutamos el experimento pasando el traductor para tener los nombres reales (ej: YAL001C)
             Experimento::ejecutarPerturbacion(grafoProteinas, "yeast.edgelist", csvPerturbacion, traductor);
         }
         
@@ -574,6 +601,62 @@ int main(int argc, char* argv[]) {
         
         std::cout << "\n-> Experimento finalizado.\n";
         csvPerturbacion.close();
+    }
+
+
+    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+    // ESCENARIO 7: AUMENTO DE ARISTAS (TRADE)
+    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+    else if (modo == "aumento_trade") {
+        std::cout << "--- INICIANDO MODO: AUMENTO TRADE ---\n";
+        std::ofstream csvAumento("resultados_aumento_trade.csv");
+        if (!csvAumento.is_open()) return 1;
+        
+        csvAumento << "Dataset,Estado,Arista,Deg_Val,Bet_Val,Clo_Val,PR_Val,ASP_Val,Dia_Val,Eig_Val\n";
+
+        std::vector<std::string> archivosTrade = {
+            "datasets/2000.net", "datasets/2005.net", "datasets/2010.net",
+            "datasets/2015.net", "datasets/2018.net"
+        };
+        std::vector<GraphList> redesComerciales(archivosTrade.size(), GraphList(true));
+        MapeoGrafo traductor = cargarTradeNetworks(archivosTrade, redesComerciales);
+
+        for (std::size_t i = 0; i < archivosTrade.size(); ++i) {
+            if (redesComerciales[i].getNumVertices() > 0) {
+                Experimento::ejecutarAumento(redesComerciales[i], archivosTrade[i], csvAumento, traductor);
+            }
+        }
+        
+        std::cout << "\n-> Experimento finalizado.\n";
+        csvAumento.close();
+    }
+
+
+    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+    // ESCENARIO 8: AUMENTO DE ARISTAS (PROTEINAS)
+    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+    else if (modo == "aumento_proteinas") {
+        std::cout << "--- INICIANDO MODO: AUMENTO PROTEINAS ---\n";
+        
+        std::ofstream csvAumento("resultados_aumento_prot.csv");
+        if (!csvAumento.is_open()) {
+            std::cerr << "Error: No se pudo crear resultados_aumento_prot.csv\n";
+            return 1;
+        }
+        
+        // La misma cabecera que espera tu script de Python
+        csvAumento << "Dataset,Estado,Arista,Deg_Val,Bet_Val,Clo_Val,PR_Val,ASP_Val,Dia_Val,Eig_Val\n";
+
+        GraphList grafoProteinas(false); 
+        std::string rutaDataset = "datasets/yeast.edgelist"; 
+        MapeoGrafo traductor = cargarEdgeList(rutaDataset, grafoProteinas);
+
+        if (grafoProteinas.getNumVertices() > 0) {
+            Experimento::ejecutarAumento(grafoProteinas, "yeast.edgelist", csvAumento, traductor);
+        }
+        
+        std::cout << "\n-> Experimento finalizado.\n";
+        csvAumento.close();
     }
     // escenario no reconocido
     else {

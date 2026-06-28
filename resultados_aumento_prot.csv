@@ -1,0 +1,5 @@
+Dataset,Estado,Arista,Deg_Val,Bet_Val,Clo_Val,PR_Val,ASP_Val,Dia_Val,Eig_Val
+yeast.edgelist,Original,Ninguna,0.55433,0.0284943,0.685183,0.00331134,2.20921,6,0.106026
+yeast.edgelist,Aumento_Hub_Hub,YDL160C+YGL122C,0.554483,0.0285201,0.685904,0.00331222,2.20921,6,0.106224
+yeast.edgelist,Aumento_Hub_Peri,YDL160C+snR62,0.554483,0.0286103,0.685255,0.0033221,2.20907,6,0.106027
+yeast.edgelist,Aumento_Peri_Peri,snR62+AT1G07910,0.55433,0.0284925,0.685183,0.00331107,2.2092,6,0.106026

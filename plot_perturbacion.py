@@ -68,7 +68,7 @@ try:
                     continue
                 
                 # 1. Poner el número exacto arriba de la barra
-                axes[i].text(x_pos, val + (rango * 0.02), f'{val:.4f}',
+                axes[i].text(x_pos, val + (rango * 0.02), f'{val:.9f}',
                              ha='center', va='bottom', rotation=90, fontsize=9)
                 
                 # 2. Poner la etiqueta de la arista cortada DEBAJO de las barras
