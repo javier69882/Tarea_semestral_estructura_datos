@@ -104,3 +104,14 @@ python3 plot_perturbacion.py csv/resultados_perturbacion_prot.csv
 python3 plot_perturbacion.py csv/resultados_aumento_trade.csv
 python3 plot_perturbacion.py csv/resultados_aumento_prot.csv
 ```
+## Specs de PC usado en el experimento
+
+Las pruebas de rendimiento, cálculo de métricas y análisis de consumo de memoria fueron ejecutadas en un entorno local utilizando un equipo con las siguientes características de hardware:
+
+* **Procesador:** AMD Ryzen 5 9600X
+* **Tarjeta Gráfica:** Palit RTX 5070
+* **Memoria RAM:** 16GB DDR5
+* **Placa Madre:** ASRock AM5
+* **Almacenamiento:** Unidad de Estado Sólido (SSD) Kingston
+* **Fuente de Poder:** Thermalright
+* **Refrigeración:** Disipador de CPU Thermalright
