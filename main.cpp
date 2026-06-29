@@ -393,7 +393,15 @@ int main(int argc, char* argv[]) {
             std::cout << "\n--- Verificacion rapida ---\n";
             std::cout << "El nodo interno 0 corresponde a la proteina: " << traductor.id_a_nombre[0] << "\n";
             std::cout << "Grado (conexiones) del nodo 0: " << grafoProteinas.getNeighbors(0).size() << "\n";
+            int totalAristas = 0;
+            for (int i = 0; i < grafoProteinas.getNumVertices(); i++) {
+                totalAristas += grafoProteinas.getNeighbors(i).size();
+            }
+            // Dividimos por 2 porque en grafos no dirigidos cada arista se cuenta dos veces
+            totalAristas /= 2; 
             
+            std::cout << "Cantidad total de aristas del grafo: " << totalAristas << "\n";
+            // ----------------------------------------
             // NUEVA LLAMADA: benchmark de metrica 2. Betweenness Centrality
             printBetweennessCentralityBenchmark(grafoProteinas, traductor, "proteinas / yeast.edgelist", "PROTEINAS CON MAYOR INTERMEDIACION (Puentes Biologicos)", false);
             
@@ -437,7 +445,7 @@ int main(int argc, char* argv[]) {
             std::cout << "\n--- Evolucion de las exportaciones de CHINA ---\n";
             std::cout << "Paises a los que exportaba en 2000: " << redesComerciales[0].getNeighbors(idChina).size() << "\n";
             std::cout << "Paises a los que exportaba en 2018: " << redesComerciales[4].getNeighbors(idChina).size() << "\n";
-
+            
             for (std::size_t i = 0; i < archivosTrade.size(); ++i) {
                 // benchmark de metrica 5. Average Shortest Path
                 printAverageShortestPathBenchmark(redesComerciales[i], archivosTrade[i]);
