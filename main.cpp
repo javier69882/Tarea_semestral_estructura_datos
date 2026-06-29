@@ -43,7 +43,7 @@
 // ./proyecto_grafos proteinas_test resultados_prot.csv
 
 // 4. GENERAR GRÁFICOS CON PYTHON (Usar python3 en WSL):
- //en wsl hice 
+//en wsl hice 
 //sudo apt update
 //sudo apt install python3-pandas python3-matplotlib
 //  Gráficos de rendimiento y tiempos de Centralidad:
@@ -60,21 +60,21 @@
 Experimentos de añadir o borrar aristas
 g++ -O3 main.cpp Graph.cpp parser_proteinas.cpp parser_trade.cpp Centrality.cpp Experimento.cpp -o proyecto_grafos
 
-quitan aristas
+Quitan aristas
 ./proyecto_grafos perturbacion_trade
 ./proyecto_grafos perturbacion_proteinas
 
-aumentan aristas
+Aumentan aristas
 ./proyecto_grafos aumento_trade
 ./proyecto_grafos aumento_proteinas
 
-graficos de perturbacion
+Gráficos de perturbación
 python3 plot_perturbacion.py resultados_perturbacion_trade.csv
 python3 plot_perturbacion.py resultados_perturbacion_prot.csv
 python3 plot_perturbacion.py resultados_aumento_trade.csv
 python3 plot_perturbacion.py resultados_aumento_prot.csv
 
-    */
+*/
 
 
 
