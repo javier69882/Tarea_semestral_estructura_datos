@@ -5,6 +5,7 @@
 #include <vector>
 #include <fstream> 
 #include <cmath>   
+#include <filesystem>
 #include "Centrality.hpp"
 #ifdef _WIN32
 #include <windows.h>
@@ -36,7 +37,6 @@
 // 2. EJECUCIONES RAPIDAS (Verificación de resultados por consola):
 // ./proyecto_grafos proteinas
 // ./proyecto_grafos trade
-// ./proyecto_grafos perturbacion_proteinas
 
 // 3. ESTUDIO EXPERIMENTAL (Genera archivos .csv de Centralidad y Memoria):
 // ./proyecto_grafos trade_test resultados_trade.csv
@@ -54,6 +54,27 @@
 // python3 plot_memoria.py memoria_prot.csv
 // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
 
+
+
+/*
+Experimentos de añadir o borrar aristas
+g++ -O3 main.cpp Graph.cpp parser_proteinas.cpp parser_trade.cpp Centrality.cpp Experimento.cpp -o proyecto_grafos
+
+quitan aristas
+./proyecto_grafos perturbacion_trade
+./proyecto_grafos perturbacion_proteinas
+
+aumentan aristas
+./proyecto_grafos aumento_trade
+./proyecto_grafos aumento_proteinas
+
+graficos de perturbacion
+python3 plot_perturbacion.py resultados_perturbacion_trade.csv
+python3 plot_perturbacion.py resultados_perturbacion_prot.csv
+python3 plot_perturbacion.py resultados_aumento_trade.csv
+python3 plot_perturbacion.py resultados_aumento_prot.csv
+
+    */
 
 
 
@@ -177,10 +198,10 @@ static void printClosenessCentralityBenchmark(const Graph& graph, const MapeoGra
     std::cout << "\n--- Closeness Centrality: " << datasetLabel << " ---\n";
     std::cout << "Closeness calculado en " << tiempoMs << " ms.\n";
     std::cout << "Tiempo total del benchmark: " << elapsedMs << " ms\n";
-    std::cout << "--- TOP 5 " << topLabel << " ---\n";
+    std::cout << "--- TOP 100 " << topLabel << " ---\n";
 
     std::cout << std::fixed << std::setprecision(6);
-    for (int i = 0; i < 5 && i < static_cast<int>(topNodos.size()); i++) {
+    for (int i = 0; i < 100 && i < static_cast<int>(topNodos.size()); i++) {
         const int idNodo = topNodos[i].first;
         const double puntaje = topNodos[i].second;
 
@@ -336,6 +357,13 @@ static std::pair<double, double> runScalarExperiment(const std::string& metricNa
     return std::make_pair(mean, variance);
 }
 
+// se crea el directorio "csv" si no existe y se retorna la ruta completa del archivo
+static std::filesystem::path ensureCsvDirAndGetPath(const std::string& fileName) {
+    const std::filesystem::path csvDir("csv");
+    std::filesystem::create_directories(csvDir);
+    return csvDir / std::filesystem::path(fileName).filename();
+}
+
 int main(int argc, char* argv[]) {
     // Validar el argumento
     if (argc < 2) {
@@ -444,9 +472,12 @@ int main(int argc, char* argv[]) {
     // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
    else if (modo == "proteinas_test") {
        if (argc < 3) return 1;
+
+        const std::filesystem::path outputCentralidad = ensureCsvDirAndGetPath(argv[2]);
+        const std::filesystem::path outputMemoria = ensureCsvDirAndGetPath("memoria_prot.csv");
         
-        std::ofstream csvCentralidad(argv[2]);
-        std::ofstream csvMemoria("memoria_prot.csv");
+        std::ofstream csvCentralidad(outputCentralidad);
+        std::ofstream csvMemoria(outputMemoria);
         
         auto startConst = std::chrono::high_resolution_clock::now();
         GraphList grafoProteinas(false); 
@@ -491,8 +522,11 @@ int main(int argc, char* argv[]) {
     else if (modo == "trade_test") {
         if (argc < 3) return 1;
 
-        std::ofstream csvCentralidad(argv[2]);
-        std::ofstream csvMemoria("memoria_trade.csv"); 
+        const std::filesystem::path outputCentralidad = ensureCsvDirAndGetPath(argv[2]);
+        const std::filesystem::path outputMemoria = ensureCsvDirAndGetPath("memoria_trade.csv");
+
+        std::ofstream csvCentralidad(outputCentralidad);
+        std::ofstream csvMemoria(outputMemoria); 
         
         std::vector<std::string> archivosTrade = {"datasets/2000.net", "datasets/2005.net", "datasets/2010.net", "datasets/2015.net", "datasets/2018.net"};
         std::vector<GraphList> redesComerciales(archivosTrade.size(), GraphList(true));
@@ -537,36 +571,119 @@ int main(int argc, char* argv[]) {
     }
     }
     
-    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+// OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
     // ESCENARIO 5: EXPERIMENTO DE PERTURBACION (PROTEINAS)
     // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
     else if (modo == "perturbacion_proteinas") {
         std::cout << "--- INICIANDO MODO: PERTURBACION PROTEINAS ---\n";
+        const std::filesystem::path outputPerturbacion = ensureCsvDirAndGetPath("resultados_perturbacion_prot.csv");
+        
+        std::ofstream csvPerturbacion(outputPerturbacion);
+        if (!csvPerturbacion.is_open()) {
+            std::cerr << "Error: No se pudo crear " << outputPerturbacion << "\n";
+            return 1;
+        }
+        
+        // Cabecera exacta que necesita el script de Python
+        csvPerturbacion << "Dataset,Estado,Arista,Deg_Val,Deg_Top1,Bet_Val,Bet_Top1,Clo_Val,Clo_Top1,PR_Val,PR_Top1,ASP_Val,Dia_Val,Eig_Val,Eig_Top1\n";
+
         GraphList grafoProteinas(false); 
         std::string rutaDataset = "datasets/yeast.edgelist"; 
-        cargarEdgeList(rutaDataset, grafoProteinas);
+        MapeoGrafo traductor = cargarEdgeList(rutaDataset, grafoProteinas);
 
         if (grafoProteinas.getNumVertices() > 0) {
-            // Llamamos a la clase externa para mantener el main limpio
-            Experimento::ejecutarPerturbacion(grafoProteinas);
+            // Ejecutamos el experimento pasando el traductor para tener los nombres reales (ej: YAL001C)
+            Experimento::ejecutarPerturbacion(grafoProteinas, "yeast.edgelist", csvPerturbacion, traductor);
         }
-    }
-    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
-    // ESCENARIO 6: EXPERIMENTO DE PERTURBACION (TRADE 2018)
-    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
-    else if (modo == "perturbacion_trade") {
-        std::cout << "--- INICIANDO MODO: PERTURBACION TRADE (2018) ---\n";
-        std::vector<std::string> archivoUnico = {"datasets/2018.net"};
-        std::vector<GraphList> redUnica(1, GraphList(true));
         
-        cargarTradeNetworks(archivoUnico, redUnica);
+        std::cout << "\n-> Experimento finalizado.\n";
+        csvPerturbacion.close();
+    }
+    // ESCENARIO 6: EXPERIMENTO DE PERTURBACION (TRADE MULTIPLE)
+    else if (modo == "perturbacion_trade") {
+        std::cout << "--- INICIANDO MODO: PERTURBACION TRADE (TODOS LOS AÑOS) ---\n";
+        const std::filesystem::path outputPerturbacion = ensureCsvDirAndGetPath("resultados_perturbacion_trade.csv");
+        
+        std::ofstream csvPerturbacion(outputPerturbacion);
+        if (!csvPerturbacion.is_open()) return 1;
+        
+        // ¡NUEVA CABECERA MÁS LIMPIA!
+        csvPerturbacion << "Dataset,Estado,Arista,Deg_Val,Deg_Top1,Bet_Val,Bet_Top1,Clo_Val,Clo_Top1,PR_Val,PR_Top1,ASP_Val,Dia_Val,Eig_Val,Eig_Top1\n";
 
-        if (redUnica[0].getNumVertices() > 0) {
-            Experimento::ejecutarPerturbacion(redUnica[0]);
+        std::vector<std::string> archivosTrade = {
+            "datasets/2000.net", "datasets/2005.net", "datasets/2010.net",
+            "datasets/2015.net", "datasets/2018.net"
+        };
+        std::vector<GraphList> redesComerciales(archivosTrade.size(), GraphList(true));
+        MapeoGrafo traductor = cargarTradeNetworks(archivosTrade, redesComerciales);
+
+        for (std::size_t i = 0; i < archivosTrade.size(); ++i) {
+            if (redesComerciales[i].getNumVertices() > 0) {
+                Experimento::ejecutarPerturbacion(redesComerciales[i], archivosTrade[i], csvPerturbacion, traductor);
+            }
         }
+        
+        std::cout << "\n-> Experimento finalizado.\n";
+        csvPerturbacion.close();
     }
 
 
+    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+    // ESCENARIO 7: AUMENTO DE ARISTAS (TRADE)
+    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+    else if (modo == "aumento_trade") {
+        std::cout << "--- INICIANDO MODO: AUMENTO TRADE ---\n";
+        const std::filesystem::path outputAumento = ensureCsvDirAndGetPath("resultados_aumento_trade.csv");
+        std::ofstream csvAumento(outputAumento);
+        if (!csvAumento.is_open()) return 1;
+        
+        csvAumento << "Dataset,Estado,Arista,Deg_Val,Deg_Top1,Bet_Val,Bet_Top1,Clo_Val,Clo_Top1,PR_Val,PR_Top1,ASP_Val,Dia_Val,Eig_Val,Eig_Top1\n";
+
+        std::vector<std::string> archivosTrade = {
+            "datasets/2000.net", "datasets/2005.net", "datasets/2010.net",
+            "datasets/2015.net", "datasets/2018.net"
+        };
+        std::vector<GraphList> redesComerciales(archivosTrade.size(), GraphList(true));
+        MapeoGrafo traductor = cargarTradeNetworks(archivosTrade, redesComerciales);
+
+        for (std::size_t i = 0; i < archivosTrade.size(); ++i) {
+            if (redesComerciales[i].getNumVertices() > 0) {
+                Experimento::ejecutarAumento(redesComerciales[i], archivosTrade[i], csvAumento, traductor);
+            }
+        }
+        
+        std::cout << "\n-> Experimento finalizado.\n";
+        csvAumento.close();
+    }
+
+
+    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+    // ESCENARIO 8: AUMENTO DE ARISTAS (PROTEINAS)
+    // OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+    else if (modo == "aumento_proteinas") {
+        std::cout << "--- INICIANDO MODO: AUMENTO PROTEINAS ---\n";
+        const std::filesystem::path outputAumento = ensureCsvDirAndGetPath("resultados_aumento_prot.csv");
+        
+        std::ofstream csvAumento(outputAumento);
+        if (!csvAumento.is_open()) {
+            std::cerr << "Error: No se pudo crear " << outputAumento << "\n";
+            return 1;
+        }
+        
+        // La misma cabecera que espera tu script de Python
+       csvAumento << "Dataset,Estado,Arista,Deg_Val,Deg_Top1,Bet_Val,Bet_Top1,Clo_Val,Clo_Top1,PR_Val,PR_Top1,ASP_Val,Dia_Val,Eig_Val,Eig_Top1\n";
+
+        GraphList grafoProteinas(false); 
+        std::string rutaDataset = "datasets/yeast.edgelist"; 
+        MapeoGrafo traductor = cargarEdgeList(rutaDataset, grafoProteinas);
+
+        if (grafoProteinas.getNumVertices() > 0) {
+            Experimento::ejecutarAumento(grafoProteinas, "yeast.edgelist", csvAumento, traductor);
+        }
+        
+        std::cout << "\n-> Experimento finalizado.\n";
+        csvAumento.close();
+    }
     // escenario no reconocido
     else {
         std::cerr << "Error: Modo '" << modo << "' no reconocido.\n";
