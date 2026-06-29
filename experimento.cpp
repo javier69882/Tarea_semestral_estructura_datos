@@ -15,10 +15,10 @@ void Experimento::evaluarImpactoGlobal(const Graph& g, const std::string& nombre
     // Cabecera visual para la consola
     std::cout << "\n>>> RESULTADOS PARA ESTADO: [" << estado << "] | Arista: " << arista << " <<<\n";
 
-    // Función lambda interna para imprimir el Top 10 sin repetir código
-    auto printTop10 = [&](const std::vector<std::pair<int, double>>& ranking, const std::string& titulo) {
-        std::cout << "  --- Top 10 " << titulo << " ---\n";
-        for (size_t i = 0; i < 10 && i < ranking.size(); ++i) {
+    // Función lambda interna para imprimir el Top 30 sin repetir código
+    auto printTop30 = [&](const std::vector<std::pair<int, double>>& ranking, const std::string& titulo) {
+        std::cout << "  --- Top 30 " << titulo << " ---\n";
+        for (size_t i = 0; i < 30 && i < ranking.size(); ++i) {
             std::cout << "    " << i + 1 << ". " << traductor.id_a_nombre.at(ranking[i].first) 
                       << " (Puntaje: " << ranking[i].second << ")\n";
         }
@@ -26,7 +26,7 @@ void Experimento::evaluarImpactoGlobal(const Graph& g, const std::string& nombre
 
     // DEGREE
     auto resDeg = Centrality::calculateDegreeCentrality(g, isDirected);
-    printTop10(resDeg.first, "Degree");
+    printTop30(resDeg.first, "Degree");
     double deg = 0.0; std::string topDeg = "N/A";
     if (resDeg.first.size() > elemento) {
         deg = resDeg.first[elemento].second;
@@ -35,7 +35,7 @@ void Experimento::evaluarImpactoGlobal(const Graph& g, const std::string& nombre
 
     // BETWEENNESS
     auto resBet = Centrality::calculateBetweennessCentrality(g);
-    printTop10(resBet.first, "Betweenness");
+    printTop30(resBet.first, "Betweenness");
     double bet = 0.0; std::string topBet = "N/A";
     if (resBet.first.size() > elemento) {
         bet = resBet.first[elemento].second;
@@ -44,7 +44,7 @@ void Experimento::evaluarImpactoGlobal(const Graph& g, const std::string& nombre
 
     // CLOSENESS
     auto resClo = Centrality::calculateClosenessCentrality(g);
-    printTop10(resClo.first, "Closeness");
+    printTop30(resClo.first, "Closeness");
     double clo = 0.0; std::string topClo = "N/A";
     if (resClo.first.size() > elemento) {
         clo = resClo.first[elemento].second;
@@ -53,7 +53,7 @@ void Experimento::evaluarImpactoGlobal(const Graph& g, const std::string& nombre
 
     // PAGERANK
     auto resPr = Centrality::calculatePageRank(g);
-    printTop10(resPr.first, "PageRank");
+    printTop30(resPr.first, "PageRank");
     double pr = 0.0; std::string topPr = "N/A";
     if (resPr.first.size() > elemento) {
         pr = resPr.first[elemento].second;
@@ -62,7 +62,7 @@ void Experimento::evaluarImpactoGlobal(const Graph& g, const std::string& nombre
 
     // EIGENVECTOR
     auto resEig = Centrality::calculateEigenvectorCentrality(g);
-    printTop10(resEig.first, "Eigenvector");
+    printTop30(resEig.first, "Eigenvector");
     double eig = 0.0; std::string topEig = "N/A";
     if (resEig.first.size() > elemento) {
         eig = resEig.first[elemento].second;
