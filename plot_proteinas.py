@@ -15,24 +15,19 @@ os.makedirs('graficos', exist_ok=True)
 metricas = ["Degree", "Betweenness", "Closeness", "PageRank", "ASP", "Diameter", "Eigenvector"]
 col_mean = [f"{metrica}_mean" for metrica in metricas]
 col_var = [f"{metrica}_var" for metrica in metricas]
-col_mem = [f"{metrica}_mem_mean" for metrica in metricas]
 
 df_means = df[col_mean].copy()
 df_vars = df[col_var].copy()
-df_mem = df[col_mem].copy()
 
 df_means.columns = metricas
 df_vars.columns = metricas
-df_mem.columns = metricas
 
 # Como el dataset de proteínas tiene solo 1 red, indexamos con su nombre
 df_means.index = ['Yeast (Levadura)']
 df_vars.index = ['Yeast (Levadura)']
-df_mem.index = ['Yeast (Levadura)']
 
 # Convertimos la fila única en una serie para graficar por métrica
 serie_means = df_means.iloc[0]
-serie_mem = df_mem.iloc[0]
 
 # Generación del lienzo gráfico
 plt.figure(figsize=(16, 9))
@@ -55,11 +50,10 @@ plt.grid(axis='y', linestyle='--', alpha=0.5)
 for j, bar in enumerate(ax.patches):
     mean_val = bar.get_height()
     var_val = df_vars.iloc[0, j]
-    mem_val = serie_mem.iloc[j]
 
     if mean_val > 0:
         str_var = f"{var_val:.1e}" if var_val < 0.01 else f"{var_val:.2f}"
-        texto_etiqueta = f"m: {mean_val:.2f}\nv: {str_var}\nmem: {mem_val:.4f} KB"
+        texto_etiqueta = f"m: {mean_val:.2f}\nv: {str_var}"
 
         ax.annotate(texto_etiqueta,
                     (bar.get_x() + bar.get_width() / 2., mean_val),

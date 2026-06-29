@@ -90,6 +90,13 @@ python3 plot_memoria.py csv/memoria_trade.csv
 python3 plot_memoria.py csv/memoria_prot.csv
 ```
 
+**Gráficos de rendimiento algorítmico**
+
+```bash
+python3 plot_trade.py csv/resultados_trade.csv
+python3 plot_proteinas.py csv/resultados_prot.csv
+```
+
 **Gráficos de perturbación (eliminación y aumento de aristas):**
 ```bash
 python3 plot_perturbacion.py csv/resultados_perturbacion_trade.csv
